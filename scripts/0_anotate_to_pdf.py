@@ -17,21 +17,20 @@ if not os.path.exists(lesson_folder):
 
 def add_notes_to_pdf(input_file, output_file, note_texts):
     # Read the PDF file
-    input_pdf = PyPDF2.PdfFileReader(input_file)
-    if input_pdf.isEncrypted:
+    input_pdf = PyPDF2.PdfReader(input_file)
+    if input_pdf.is_encrypted:
         input_pdf.decrypt("")  # If there's a password, replace the empty string with the password
-    output_pdf = PyPDF2.PdfFileWriter()
+    output_pdf = PyPDF2.PdfWriter()
 
-
-    for index in range(input_pdf.getNumPages()):
+    for index in range(len(input_pdf.pages)):
         # Get the specified page
-        page = input_pdf.getPage(index)
+        page = input_pdf.pages[index]
 
 
         # Check if there's a note for this page
         if index < len(note_texts):
             # Get the page size
-            page_width, page_height = page.mediaBox.upperRight
+            page_width, page_height = page.mediabox.upper_right
 
             # Calculate the x and y coordinates for the top right corner
             x = page_width - 50  # Subtract 50 to account for the width of the note
@@ -49,7 +48,7 @@ def add_notes_to_pdf(input_file, output_file, note_texts):
                     PyPDF2.generic.NumberObject(x + 30),
                     PyPDF2.generic.NumberObject(y + 30),
                 ]),
-                PyPDF2.generic.NameObject("/Contents"): PyPDF2.generic.createStringObject(note_texts[index]),
+                PyPDF2.generic.NameObject("/Contents"): PyPDF2.generic.create_string_object(note_texts[index]),
                 PyPDF2.generic.NameObject("/Open"): PyPDF2.generic.BooleanObject(True),
                 PyPDF2.generic.NameObject("/Name"): PyPDF2.generic.NameObject("/Comment"),
             })
@@ -61,7 +60,7 @@ def add_notes_to_pdf(input_file, output_file, note_texts):
             page["/Annots"].append(note)
 
         # Add the page to the output PDF
-        output_pdf.addPage(page)
+        output_pdf.add_page(page)
 
     # Write the output PDF file
     with open(output_file, "wb") as output_file_handle:
@@ -73,7 +72,7 @@ output_file = lesson_folder + "/" + lesson_id + "_transcrita.pdf"
 
 #add_notes_to_pdf(input_file, output_file, transcription_per_page)
 
-N = PyPDF2.PdfFileReader(input_file).getNumPages()
+N = len(PyPDF2.PdfReader(input_file).pages)
 blank_transcriptions = [""] * N
 
 add_notes_to_pdf(input_file, output_file, blank_transcriptions)
@@ -85,14 +84,14 @@ add_notes_to_pdf(input_file, output_file, blank_transcriptions)
 
 
 # #"LIMPA" O PDF
-# from PyPDF2 import PdfFileReader, PdfFileWriter
+# from PyPDF2 import PdfReader, PdfWriter
 
 # input_file = '2023-05-02_uc10_nervos.pdf'
 # output_file = '2023-05-02_uc10_nervos_cleaned.pdf'
 
 # def clean_pdf(input_file, output_file):
-#     reader = PdfFileReader(input_file)
-#     writer = PdfFileWriter()
+#     reader = PdfReader(input_file)
+#     writer = PdfWriter()
 
 #     for i in range(reader.getNumPages()):
 #         page = reader.getPage(i)
