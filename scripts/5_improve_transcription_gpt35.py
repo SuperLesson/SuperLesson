@@ -6,10 +6,12 @@ import time
 
 import nltk
 import openai
+from dotenv import load_dotenv
 from nltk.tokenize import word_tokenize
 
-openai.organization = ""
-openai.api_key = ""
+load_dotenv()
+openai.organization = os.getenv("OPENAI_ORG")
+openai.api_key = os.getenv("OPENAI_TOKEN")
 
 lesson_id = ""
 script_folder = os.getcwd()
