@@ -15,6 +15,7 @@ pydub = "^0.25.1"
 pypdf = "^3.15.5"
 ffmpeg-python = "^0.2.0"
 pypdf2 = "^3.0.1"
+python-dotenv = "^1.0.0"
 
 
 [build-system]
