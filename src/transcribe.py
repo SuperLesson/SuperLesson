@@ -22,15 +22,14 @@ class Transcribe:
     def __init__(self, lesson_root: str):
         self.lesson_root = lesson_root
         self._transcription_path = os.path.join(self.lesson_root, "transcription.txt")
-        print(self._transcription_path)
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
 
     def single_file(self, transcription_source):
         transcription_path = self._transcription_path
-        if os.path.isfile(transcription_path):
-            raise Exception("error: a transcription for this video already exists")
+        if os.path.isfile(transcription_path) and input("Transcription file already exists. Overwrite? (y/n) ") != "y":
+            return transcription_path
 
         start_execution_time = time.time()
 
