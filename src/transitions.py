@@ -24,32 +24,10 @@ class Transitions:
         video_path = lesson_folder + "/" + self.lesson_id + ".mp4"
         audio_path = audio_folder + "/" + self.lesson_id + ".wav"
 
+        # TODO: use logging library here
         print(audio_path)
 
-        # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        tt_directory = lesson_folder + "/tframes"
-        image_names = []
-        for filename in os.listdir(tt_directory):
-            if filename.endswith(".png"):
-                image_names.append(filename)
-
-        prefix = self.lesson_id + ".mp4_"
-        sufix = ".png"
-        cleaned_terms = [name.replace(prefix, "") for name in image_names]
-        cleaned_terms = [name.replace(sufix, "") for name in cleaned_terms]
-        sorted_terms = sorted(cleaned_terms)
-        first_two = sorted_terms[0][:2]
-        sorted_terms.insert(0, first_two + "-00-00")
-
-        # RELATIVE TIME OF TTS
-        df_tt = pd.DataFrame(sorted_terms, columns=["time"])
-        df_tt["time"] = df_tt["time"].str.strip()
-        df_tt["datetime"] = pd.to_datetime(df_tt["time"], format="%H-%M-%S")  # "format" applies for the input, not the output
-        df_tt["relative_tt"] = pd.NaT
-        for i in range(len(df_tt)):
-            df_tt.at[i,"relative_tt"] = (df_tt.at[i,"datetime"] - df_tt.at[0, "datetime"])
-        df_tt["relative_tt"] = pd.to_timedelta(df_tt["relative_tt"])
-        df_tt = df_tt.drop(columns=["datetime"])
+        df_tt = self._get_relative_times()
         tt_seconds = df_tt["relative_tt"].dt.total_seconds().tolist()
 
         if os.path.isfile(audio_path):
@@ -72,10 +50,11 @@ class Transitions:
         # silence_threshold_factor=10 worked for lesson_id = "2023-05-22_uc05_transporte_gases"
         # silence_threshold_factor=10 or 9 didn"t work for lesson_id = "2023-06-12_uc05_envelhecimento_pulmonar_estrutura"
         # now trying silence_threshold_factor = 8
+        # TODO: remove this try-except block
         try:
             silences  # need while in jupyter environment, cause this operation takes +1 minute to execute
         except:  # noqa: E722
-            silences = detect_silence(audio_path)
+            silences = self._detect_silence(audio_path)
 
         tt_seconds_improved = self._improve_tt(tt_seconds, silences)
 
@@ -205,16 +184,13 @@ class Transitions:
 
     # extract_segments(audio_path, audio_folder + "/" + self.lesson_id, tt_seconds, silences)
 
-    def verify_tbreaks_with_mpv(self):
+    def _get_relative_times(self):
+        # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
         script_folder = os.getcwd()
         root_folder = os.path.dirname(script_folder)
         lesson_folder = root_folder + "/lessons/" + self.lesson_id
         if not os.path.exists(lesson_folder):
             print("Lesson folder does not exist.")
-        audio_folder = lesson_folder + "/audios"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
-        video_path = lesson_folder + "/" + self.lesson_id + ".mp4"
 
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
         tt_directory = lesson_folder + "/tframes"
@@ -222,6 +198,7 @@ class Transitions:
         for filename in os.listdir(tt_directory):
             if filename.endswith(".png"):
                 image_names.append(filename)
+
         prefix = self.lesson_id + ".mp4_"
         sufix = ".png"
         cleaned_terms = [name.replace(prefix, "") for name in image_names]
@@ -239,12 +216,25 @@ class Transitions:
             df_tt.at[i, "relative_tt"] = (df_tt.at[i, "datetime"] - df_tt.at[0, "datetime"])
         df_tt["relative_tt"] = pd.to_timedelta(df_tt["relative_tt"])
         df_tt = df_tt.drop(columns=["datetime"])
+        return df_tt
+
+    def verify_tbreaks_with_mpv(self):
+        script_folder = os.getcwd()
+        root_folder = os.path.dirname(script_folder)
+        lesson_folder = root_folder + "/lessons/" + self.lesson_id
+        if not os.path.exists(lesson_folder):
+            print("Lesson folder does not exist.")
+        audio_folder = lesson_folder + "/audios"
+        if not os.path.exists(audio_folder):
+            os.makedirs(audio_folder)
+        video_path = lesson_folder + "/" + self.lesson_id + ".mp4"
+
+        df_tt = self._get_relative_times()
 
         # GO SLIGHTLY BEFORE TTS
         time_translation = 6
-        df_tt_translated = pd.DataFrame(sorted_terms, columns=["time"])
-        df_tt_translated["relative_time"] = df_tt["relative_tt"] - pd.Timedelta(seconds=time_translation)
-        tt_seconds = df_tt_translated["relative_time"].dt.total_seconds().tolist()
+        df_tt["relative_time"] = df_tt["relative_tt"] - pd.Timedelta(seconds=time_translation)
+        tt_seconds = df_tt["relative_time"].dt.total_seconds().tolist()
         tt_seconds = [int(time) for time in tt_seconds]
 
         tt_seconds = [self._seconds_to_hms(time) for time in tt_seconds]
