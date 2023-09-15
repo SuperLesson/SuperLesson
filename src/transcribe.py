@@ -8,31 +8,33 @@ from datetime import timedelta
 
 import nltk
 import openai
-from faster_whisper import WhisperModel
 from dotenv import load_dotenv
+from faster_whisper import WhisperModel
 from nltk.tokenize import word_tokenize
 
+
 class Transcribe:
-    def __init__(self, lesson_id):
-        self.lesson_id = lesson_id
+    """Class to transcribe a lesson."""
+
+    lesson_root: str
+    _transcription_path: str
+
+    def __init__(self, lesson_root: str):
+        self.lesson_root = lesson_root
+        self._transcription_path = os.path.join(self.lesson_root, "transcription.txt")
+        print(self._transcription_path)
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
 
-    def single_file(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = os.path.join(root_folder, "lessons", self.lesson_id)
-        if not os.path.exists(lesson_folder):
-            print(lesson_folder)
-            print("Lesson folder does not exist.")
-        video_input_path = os.path.join(lesson_folder, self.lesson_id + ".mp4")
-        transcription_path = os.path.join(lesson_folder, self.lesson_id + "_transcription.txt")
+    def single_file(self, transcription_source):
+        transcription_path = self._transcription_path
         if os.path.isfile(transcription_path):
             raise Exception("error: a transcription for this video already exists")
 
         start_execution_time = time.time()
 
+        # TODO: add a flag to select the model size
         model_size = "large-v2"
         # model_size = "small"
         # Run on GPU with FP16
@@ -44,12 +46,12 @@ class Transcribe:
 
         # informações sobre a função transcribe
         # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
-        segments, info = model.transcribe(video_input_path, beam_size=5, language="pt", vad_filter=True)
+        segments, _ = model.transcribe(transcription_source, beam_size=5, language="pt", vad_filter=True)
         # segments, info = model.transcribe(video_path, beam_size=5, language = "pt", vad_filter = True, initial_prompt = prompt)
 
         # print("Detected language "%s" with probability %f" % (info.language, info.language_probability))
         lines = []
-        for i, segment in enumerate(segments):
+        for segment in segments:
             print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
             lines.append("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
 
@@ -82,27 +84,24 @@ class Transcribe:
         # ADICIONAR PROMPT À TRANSCRIÇÃO https://platform.openai.com/docs/guides/speech-to-text/prompting
         # https://github.com/openai/whisper/discussions/355
         # options = whisper.DecodingOptions(fp16=False, prompt="vocab")
+        return transcription_path
 
-    def replace_words(self):
-        data_id = "resp"
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        data_folder = root_folder + "/data/"
-        if not (os.path.exists(lesson_folder) and os.path.exists(data_folder)):
-            print("Lesson or Data folder do not exist.")
+    def replace_words(self, tmarks_path):
+        data_folder = os.path.join(self.lesson_root, "data")
+        if not os.path.exists(data_folder):
+            print(f"{data_folder} doesn't exist, so no replacements will be done")
+            return None
 
         # INPUT TRANSCRIPTION
-        transcription_path = lesson_folder + "/" + self.lesson_id + "_transcription_tmarks.txt"
-        with open(transcription_path, "r") as file:
+        with open(tmarks_path, "r") as file:
             transcription = file.read()
         paragraphs = re.split(r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2})", transcription)
         paragraphs = [para.strip() for para in paragraphs if para.strip()]
         # print(paragraphs)
 
-
+        # TODO: make this portable
         # INPUT DATA FOR SUBSTITUTION
-        input_path = data_folder + "/" + data_id + ".txt"
+        input_path = os.path.join(data_folder, "resp.txt")
         with open(input_path, "r") as file:
             prompt_words = {}
             for line in file:
@@ -117,9 +116,13 @@ class Transcribe:
         for item in paragraphs:
             paragraphs_output.append(self._replace_strings(prompt_words, item))
 
-        with open(lesson_folder + "/" + self.lesson_id + "_transcription_tmarks_replaced.txt", "w", encoding="utf-8") as f:
+        replacement_path = os.path.join(self.lesson_root, "transcription_replaced.txt")
+        with open(replacement_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + "\n")
+
+        return replacement_path
+
     # SUBSTITUTE
     @staticmethod
     def _replace_strings(dictionary, string):
@@ -127,16 +130,9 @@ class Transcribe:
             string = string.replace(old_string, new_string)
         return string
 
-    def improve_transcription(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
-
+    def improve_transcription(self, replacement_path):
         # INPUT TRANSCRIPTION WITH MARKS
-        transcription_with_marks_path = lesson_folder + "/" + self.lesson_id + "_transcription_tmarks.txt"
-        with open(transcription_with_marks_path, 'r') as file:
+        with open(replacement_path, 'r') as file:
             transcription = file.read()
         paragraphs = re.split(r'(==== n=\d+ tt=\d{2}:\d{2}:\d{2})', transcription)
         paragraphs = [para.strip() for para in paragraphs if para.strip()]
@@ -222,7 +218,8 @@ class Transcribe:
                 paragraphs_output.append(transcription_improved[i])
 
         # EXPORT RESULT
-        with open(lesson_folder + "/" + self.lesson_id + "_transcription_improved_gpt3.txt", "w", encoding="utf-8") as f:
+        improved_transcription_path = os.path.join(self.lesson_root, "transcription_improved_gpt3.txt")
+        with open(improved_transcription_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + '\n')
 
@@ -238,19 +235,11 @@ class Transcribe:
         # if len(messages_improve_transcription) != len(clean_transcription):
         #     print("A transcription block was lost")
 
-    def check_differences(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
+        return improved_transcription_path
 
-        transcription_input = lesson_folder + "/" + self.lesson_id + "_transcription_tmarks.txt"
-        transcription_output = lesson_folder + "/" + self.lesson_id + "_transcription_improved_gpt3.txt"
-        # transcription_output = lesson_folder + "/" + self.lesson_id + "_rascunho_2.txt"
-
+    def check_differences(self, replacement_path, improved_path):
         # DIFF
-        command = f"wdiff -n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m' \"{transcription_input}\" \"{transcription_output}\"; bash"
+        command = f"wdiff -n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m' \"{replacement_path}\" \"{improved_path}\"; bash"
         subprocess.Popen(["gnome-terminal", "--", "bash", "-c", command])
 
     @staticmethod

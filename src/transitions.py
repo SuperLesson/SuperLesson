@@ -1,7 +1,8 @@
+import datetime
 import os
 import re
 import subprocess
-import time, datetime
+import time
 
 import mpv
 import pandas as pd
@@ -9,25 +10,19 @@ from pydub import AudioSegment, silence
 
 
 class Transitions:
-    def __init__(self, lesson_id):
-        self.lesson_id = lesson_id
+    lesson_root: str
 
-    def insert_tmarks(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
-        audio_folder = lesson_folder + "/audios"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
-        video_path = lesson_folder + "/" + self.lesson_id + ".mp4"
-        audio_path = audio_folder + "/" + self.lesson_id + ".wav"
+    def __init__(self, lesson_root: str):
+        self.lesson_root = lesson_root
+
+    def insert_tmarks(self, video_path, transcription_path):
+        # TODO: use audio as source for transcription
+        audio_path = re.sub(r"\.\w*$", ".wav", video_path)
 
         # TODO: use logging library here
         print(audio_path)
 
-        df_tt = self._get_relative_times()
+        df_tt = self._get_relative_times(video_path)
         tt_seconds = df_tt["relative_tt"].dt.total_seconds().tolist()
 
         if os.path.isfile(audio_path):
@@ -72,7 +67,6 @@ class Transitions:
         # print(df_tt_improved.dtypes)
 
         # IMPORT TRANSCRIPTION
-        transcription_path = lesson_folder + "/" + self.lesson_id + "_transcription.txt"
         with open(transcription_path, "r") as f:
             lines = f.readlines()
         data = []
@@ -136,7 +130,8 @@ class Transitions:
         paragraphs = re.split(r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2}\\n)", continuos_text)
         paragraphs = [para for para in paragraphs if para.strip()]
         paragraphs = [re.sub(r"\\n$", "", line) for line in paragraphs]
-        with open(lesson_folder + "/" + self.lesson_id + "_transcription_tmarks.txt", "w", encoding="utf-8") as f:
+        tmarks_path = os.path.join(self.lesson_root, "transcription_tmarks.txt")
+        with open(tmarks_path, "w", encoding="utf-8") as f:
             for line in paragraphs:
                 f.write(line + "\n")
 
@@ -172,28 +167,24 @@ class Transitions:
 
         # extract_segments(audio_path, audio_folder + "/" + self.lesson_id, tt_seconds, silences)
 
+        return tmarks_path
+
     # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
     # possible alternative: silero-vad, which is already in use by whisper
 
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
 
-    def _get_relative_times(self):
+    def _get_relative_times(self, transcription_path):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
-
-        # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        tt_directory = lesson_folder + "/tframes"
+        tt_directory = os.path.join(self.lesson_root, "tframes")
         image_names = []
         for filename in os.listdir(tt_directory):
             if filename.endswith(".png"):
                 image_names.append(filename)
 
-        prefix = self.lesson_id + ".mp4_"
+        transcription_file = os.path.basename(transcription_path)
+        prefix = transcription_file + "_"
         sufix = ".png"
         cleaned_terms = [name.replace(prefix, "") for name in image_names]
         cleaned_terms = [name.replace(sufix, "") for name in cleaned_terms]
@@ -220,22 +211,16 @@ class Transitions:
         silences = [((start / 1000), (stop / 1000)) for start, stop in silences]  # convert to seconds
         return silences
 
-    def verify_tbreaks_with_mpv(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
-        audio_folder = lesson_folder + "/audios"
-        if not os.path.exists(audio_folder):
-            os.makedirs(audio_folder)
-        video_path = lesson_folder + "/" + self.lesson_id + ".mp4"
-
-        df_tt = self._get_relative_times()
+    def verify_tbreaks_with_mpv(self, video_path):
+        # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
+        df_tt = self._get_relative_times(video_path)
 
         # GO SLIGHTLY BEFORE TTS
         time_translation = 6
         df_tt["relative_time"] = df_tt["relative_tt"] - pd.Timedelta(seconds=time_translation)
+        # remove invalid backwards times
+        df_tt = df_tt[df_tt["relative_time"] >= pd.Timedelta(seconds=0)]
+
         tt_seconds = df_tt["relative_time"].dt.total_seconds().tolist()
         tt_seconds = [int(time) for time in tt_seconds]
 

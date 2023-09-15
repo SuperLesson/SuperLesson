@@ -4,26 +4,19 @@ import pypdf
 
 
 class Annotate:
-    def __init__(self, lesson_id):
-        self.lesson_id = lesson_id
+    """Class to annotate a lesson."""
 
-    def to_pdf(self):
-        script_folder = os.getcwd()
-        root_folder = os.path.dirname(script_folder)
-        lesson_folder = root_folder + "/lessons/" + self.lesson_id
-        if not os.path.exists(lesson_folder):
-            print("Lesson folder does not exist.")
+    lesson_root: str
 
+    def __init__(self, lesson_root: str):
+        self.lesson_root = lesson_root
+
+    def to_pdf(self, input_file):
         # Usage example
-        input_file = lesson_folder + "/" + self.lesson_id + ".pdf"
-        output_file = lesson_folder + "/" + self.lesson_id + "_transcrita.pdf"
-
-        # self.add_notes_to_pdf(input_file, output_file, transcription_per_page)
-
         N = len(pypdf.PdfReader(input_file).pages)
-        blank_transcriptions = [""] * N
+        blank_transcription = [""] * N
 
-        self.add_notes_to_pdf(input_file, output_file, blank_transcriptions)
+        self._add_notes_to_pdf(input_file, blank_transcription)
 
         # BUG:
         # for lesson_id = "2023-05-22_uc05_teste_cardiopulmonar_esforco". Comments won't go to the right corner, but to the left
@@ -45,8 +38,7 @@ class Annotate:
 
         # clean_pdf(input_file, output_file)
 
-    @staticmethod
-    def add_notes_to_pdf(input_file, output_file, note_texts):
+    def _add_notes_to_pdf(self, input_file, note_texts):
         input_pdf = pypdf.PdfReader(input_file)
         if input_pdf.is_encrypted:
             input_pdf.decrypt("")  # If there's a password, replace the empty string with the password
@@ -89,5 +81,5 @@ class Annotate:
 
             output_pdf.add_page(page)
 
-        with open(output_file, "wb") as output_file_handle:
-            output_pdf.write(output_file_handle)
+        with open(os.path.join(self.lesson_root, "transcription.pdf"), "wb") as f:
+            output_pdf.write(f)
