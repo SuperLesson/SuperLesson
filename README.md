@@ -48,3 +48,9 @@ poetry run python main.py [lesson-id]
 
 First, install `pre-commit`, then run `pre-commit install` to install all the
 necessary hooks.
+
+To test the project, run
+
+```bash
+poetry run pytest tests
+```
