@@ -1,6 +1,6 @@
 import os
 
-import PyPDF2
+import pypdf
 
 
 class Annotate:
@@ -20,7 +20,7 @@ class Annotate:
 
         # self.add_notes_to_pdf(input_file, output_file, transcription_per_page)
 
-        N = len(PyPDF2.PdfReader(input_file).pages)
+        N = len(pypdf.PdfReader(input_file).pages)
         blank_transcriptions = [""] * N
 
         self.add_notes_to_pdf(input_file, output_file, blank_transcriptions)
@@ -47,10 +47,10 @@ class Annotate:
 
     @staticmethod
     def add_notes_to_pdf(input_file, output_file, note_texts):
-        input_pdf = PyPDF2.PdfReader(input_file)
+        input_pdf = pypdf.PdfReader(input_file)
         if input_pdf.is_encrypted:
-            input_pdf.decrypt()  # If there's a password, replace the empty string with the password
-        output_pdf = PyPDF2.PdfWriter()
+            input_pdf.decrypt("")  # If there's a password, replace the empty string with the password
+        output_pdf = pypdf.PdfWriter()
 
         for index in range(len(input_pdf.pages)):
             page = input_pdf.pages[index]
@@ -67,23 +67,23 @@ class Annotate:
                 # se encaixam em slides muito cheios e atendem também ao mobile
 
                 # Create a new note annotation
-                note = PyPDF2.generic.DictionaryObject({
-                    PyPDF2.generic.NameObject("/Type"): PyPDF2.generic.NameObject("/Annot"),
-                    PyPDF2.generic.NameObject("/Subtype"): PyPDF2.generic.NameObject("/Text"),
-                    PyPDF2.generic.NameObject("/Rect"): PyPDF2.generic.ArrayObject([
-                        PyPDF2.generic.NumberObject(x),
-                        PyPDF2.generic.NumberObject(y),
-                        PyPDF2.generic.NumberObject(x + 30),
-                        PyPDF2.generic.NumberObject(y + 30),
+                note = pypdf.generic.DictionaryObject({
+                    pypdf.generic.NameObject("/Type"): pypdf.generic.NameObject("/Annot"),
+                    pypdf.generic.NameObject("/Subtype"): pypdf.generic.NameObject("/Text"),
+                    pypdf.generic.NameObject("/Rect"): pypdf.generic.ArrayObject([
+                        pypdf.generic.NumberObject(x),
+                        pypdf.generic.NumberObject(y),
+                        pypdf.generic.NumberObject(x + 30),
+                        pypdf.generic.NumberObject(y + 30),
                     ]),
-                    PyPDF2.generic.NameObject("/Contents"): PyPDF2.generic.create_string_object(note_texts[index]),
-                    PyPDF2.generic.NameObject("/Open"): PyPDF2.generic.BooleanObject(True),
-                    PyPDF2.generic.NameObject("/Name"): PyPDF2.generic.NameObject("/Comment"),
+                    pypdf.generic.NameObject("/Contents"): pypdf.generic.create_string_object(note_texts[index]),
+                    pypdf.generic.NameObject("/Open"): pypdf.generic.BooleanObject(True),
+                    pypdf.generic.NameObject("/Name"): pypdf.generic.NameObject("/Comment"),
                 })
 
                 # Add the note annotation to the page
                 if "/Annots" not in page:
-                    page[PyPDF2.generic.NameObject("/Annots")] = PyPDF2.generic.ArrayObject()
+                    page[pypdf.generic.NameObject("/Annots")] = pypdf.generic.ArrayObject()
 
                 page["/Annots"].append(note)
 
