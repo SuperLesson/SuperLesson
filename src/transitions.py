@@ -35,18 +35,6 @@ class Transitions:
         else:
             self._extract_audio(video_path, audio_path)
 
-        # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
-        # possible alternative: silero-vad, which is already in use by whisper
-
-        # look for differente ways to find silence_thresh programatically.
-        # with the code bellow I have to make guesses of threshold_factor
-        def detect_silence(audio_file, silence_threshold_factor=10):
-            audio = AudioSegment.from_wav(audio_file)
-            silence_thresh = audio.dBFS - silence_threshold_factor
-            silences = silence.detect_silence(audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1)
-            silences = [((start / 1000), (stop / 1000)) for start, stop in silences]  # convert to seconds
-            return silences
-
         # silence_threshold_factor=10 worked for lesson_id = "2023-05-22_uc05_transporte_gases"
         # silence_threshold_factor=10 or 9 didn"t work for lesson_id = "2023-06-12_uc05_envelhecimento_pulmonar_estrutura"
         # now trying silence_threshold_factor = 8
@@ -152,37 +140,43 @@ class Transitions:
             for line in paragraphs:
                 f.write(line + "\n")
 
-    # DEBUG: EXPORT TTS (don`t delet, it can be very useful for debugging)
-    # with open(lesson_folder + "/" + self.lesson_id + "_tt_improved.txt", "w") as f:
-    #     for item in tt_seconds_improved:
-    #         f.write("%s\n" % self._convert_seconds(item))
+        # DEBUG: EXPORT TTS (don`t delet, it can be very useful for debugging)
+        # with open(lesson_folder + "/" + self.lesson_id + "_tt_improved.txt", "w") as f:
+        #     for item in tt_seconds_improved:
+        #         f.write("%s\n" % self._convert_seconds(item))
 
-    # with open(lesson_folder + "/" + self.lesson_id + "_tt.txt", "w") as f:
-    #     for item in tt_seconds:
-    #         f.write("%s\n" % self._convert_seconds(item))
+        # with open(lesson_folder + "/" + self.lesson_id + "_tt.txt", "w") as f:
+        #     for item in tt_seconds:
+        #         f.write("%s\n" % self._convert_seconds(item))
 
-    # BREAK AUDIO AND TEXT SHOULD USE THE SAME ALGORITHM
-    # EXTRACT AUDIO PIECES RECALCULATING NEAREST SILENCE
+        # BREAK AUDIO AND TEXT SHOULD USE THE SAME ALGORITHM
+        # EXTRACT AUDIO PIECES RECALCULATING NEAREST SILENCE
 
-    # import subprocess
+        # import subprocess
 
-    # #improvements: two consecutives audio have small intersection of silence segments, make it smoother
-    # def extract_segments(input_file, output_file, times, silences, audio_codec="pcm_s16le", channels=1, sample_rate=16000):
-    #     for i in range(len(times) - 1):
-    #         start_time = self._nearest([silence[0] for silence in silences], times[i])
-    #         end_time = self._nearest([silence[1] for silence in silences], times[i+1])
-    #         duration = end_time - start_time
-    #         output = f"{output_file}_{i}.wav"
+        # #improvements: two consecutives audio have small intersection of silence segments, make it smoother
+        # def extract_segments(input_file, output_file, times, silences, audio_codec="pcm_s16le", channels=1, sample_rate=16000):
+        #     for i in range(len(times) - 1):
+        #         start_time = self._nearest([silence[0] for silence in silences], times[i])
+        #         end_time = self._nearest([silence[1] for silence in silences], times[i+1])
+        #         duration = end_time - start_time
+        #         output = f"{output_file}_{i}.wav"
 
-    #         command = f"ffmpeg -i {input_file} -ss {start_time} -t {duration} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output}"
-    #         #subprocess.call(command, shell=True)
-    #         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #         stdout, stderr = process.communicate() #communicate closes the opened process
+        #         command = f"ffmpeg -i {input_file} -ss {start_time} -t {duration} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output}"
+        #         #subprocess.call(command, shell=True)
+        #         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #         stdout, stderr = process.communicate() #communicate closes the opened process
 
-    #         if process.returncode != 0:
-    #             print(f"An error occurred: {stderr.decode("utf-8")}")
+        #         if process.returncode != 0:
+        #             print(f"An error occurred: {stderr.decode("utf-8")}")
 
-    # extract_segments(audio_path, audio_folder + "/" + self.lesson_id, tt_seconds, silences)
+        # extract_segments(audio_path, audio_folder + "/" + self.lesson_id, tt_seconds, silences)
+
+    # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
+    # possible alternative: silero-vad, which is already in use by whisper
+
+    # look for differente ways to find silence_thresh programatically.
+    # with the code bellow I have to make guesses of threshold_factor
 
     def _get_relative_times(self):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
@@ -217,6 +211,14 @@ class Transitions:
         df_tt["relative_tt"] = pd.to_timedelta(df_tt["relative_tt"])
         df_tt = df_tt.drop(columns=["datetime"])
         return df_tt
+
+    @staticmethod
+    def _detect_silence(audio_file, silence_threshold_factor=10):
+        audio = AudioSegment.from_wav(audio_file)
+        silence_thresh = audio.dBFS - silence_threshold_factor
+        silences = silence.detect_silence(audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1)
+        silences = [((start / 1000), (stop / 1000)) for start, stop in silences]  # convert to seconds
+        return silences
 
     def verify_tbreaks_with_mpv(self):
         script_folder = os.getcwd()
