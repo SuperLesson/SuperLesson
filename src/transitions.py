@@ -1,8 +1,9 @@
 import os
 import re
 import subprocess
-import time
+import time, datetime
 
+import mpv
 import pandas as pd
 from pydub import AudioSegment, silence
 
@@ -260,10 +261,14 @@ class Transitions:
 
     @staticmethod
     def _play_video_at_times(file_path, times, duration):
+        player = mpv.MPV()
+        player.play(file_path)
+        player.wait_until_playing()
         for time_string in times:
-            command = ["mpv", "--start={}".format(time_string), "--length={}".format(duration), "--geometry=45%x100%-0+0", file_path]
-            subprocess.run(command)
-            time.sleep(2)  # Sleep for a second between runs
+            t = time.strptime(time_string.split(',')[0],'%H:%M:%S')
+            t = datetime.timedelta(hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
+            player.seek(t, reference="absolute", precision="exact")
+            time.sleep(duration)
 
     # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
     @staticmethod

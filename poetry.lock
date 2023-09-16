@@ -1146,6 +1146,21 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-mpv"
+version = "1.0.4"
+description = "A python interface to the mpv media player"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "python-mpv-1.0.4.tar.gz", hash = "sha256:e8ced438af16a7cd149764f2d3ec984ea37432567bb7e7b02ac2a197b1c408a0"},
+    {file = "python_mpv-1.0.4-py3-none-any.whl", hash = "sha256:dce06652d9dd847c30dd585a25a4f43aae7428f0f9dccf2d44602c2637859356"},
+]
+
+[package.extras]
+screenshot-raw = ["Pillow"]
+test = ["PyVirtualDisplay"]
+
+[[package]]
 name = "pytz"
 version = "2023.3.post1"
 description = "World timezone definitions, modern and historical"
@@ -1561,4 +1576,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "3008b5b15fab7e0d934a9947bf4f4c7226f7ce44b75ef158a04e8bd705590c16"
+content-hash = "6c93a5348283c454698ac94b18ba337b0e1f7284aeb36086ff97a30166b9e07a"
