@@ -58,3 +58,16 @@ To test the project, run
 ```bash
 poetry run pytest tests
 ```
+
+## Troubleshooting
+
+### I don't have a suitable python installed, how do I run?
+
+You can use `pyenv` to manage python versions. After you've installed `pyenv`,
+run
+
+```bash
+$ pyenv install 3.10.11
+$ pyenv local 3.10.11
+$ poetry env use $(which python3)
+```
