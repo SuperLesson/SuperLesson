@@ -6,7 +6,7 @@ authors = ["Isabella Basso", "Felipe Kaneshiro", "Isaque Alves", "Ricardo Saraiv
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.9"
 pandas = "^2.1.0"
 faster-whisper = "^0.8.0"
 openai = "^0.28.1"
