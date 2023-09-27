@@ -9,7 +9,7 @@ readme = "README.md"
 python = "^3.11"
 pandas = "^2.1.0"
 faster-whisper = "^0.8.0"
-openai = "^0.28.0"
+openai = "^0.28.1"
 nltk = "^3.8.1"
 pydub = "^0.25.1"
 pypdf = {extras = ["crypto"], version = "^3.16.0"}
