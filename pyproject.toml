@@ -12,7 +12,7 @@ faster-whisper = "^0.8.0"
 openai = "^0.28.1"
 nltk = "^3.8.1"
 pydub = "^0.25.1"
-pypdf = {extras = ["crypto"], version = "^3.16.0"}
+pypdf = {extras = ["crypto"], version = "^3.16.2"}
 ffmpeg-python = "^0.2.0"
 python-dotenv = "^1.0.0"
 python-mpv = "^1.0.4"
