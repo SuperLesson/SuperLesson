@@ -23,7 +23,7 @@ class Transitions:
         print(audio_path)
 
         relative_times = self._get_relative_times()
-        tt_seconds = [_time.total_seconds() for _time in relative_times]
+        total_seconds = [_time.total_seconds() for _time in relative_times]
 
         if audio_path.exists():
             print("Audio file already exists")
@@ -39,23 +39,12 @@ class Transitions:
         except:  # noqa: E722
             silences = self._detect_silence(audio_path)
 
-        tt_seconds_improved = self._improve_tt(tt_seconds, silences)
-
-        delta_time_limit = 2.0
-        count = 0
-        if len(tt_seconds) == len(tt_seconds_improved) + 1:
-            for i in range(1, len(tt_seconds)):
-                delta = tt_seconds[i] - tt_seconds_improved[i - 1]
-                if abs(delta) > delta_time_limit:
-                    count += 1
-                    tt_seconds_improved[i - 1] = tt_seconds[i]
-        else:
-            print("tt and tt_improved should have same len")
-        print(
-            f"tt improvement failed for {count} out of {len(tt_seconds)} tts")
+        improved_transition_times = self._improve_tt(
+            total_seconds, silences, 2.0)
 
         # TIME ABSOLUTE > TIME RELATIVE TO FIRST LINE
-        df_tt_improved = pd.DataFrame(tt_seconds_improved, columns=["time"])
+        df_tt_improved = pd.DataFrame(
+            improved_transition_times, columns=["time"])
         new_row = pd.DataFrame({"time": [0]})
         df_tt_improved = pd.concat(
             [new_row, df_tt_improved]).reset_index(drop=True)
@@ -266,8 +255,8 @@ class Transitions:
 
     # TRY TO FIND NEAREST SILENCE. IF IT CAN`T FIND, GO BACK TO THE ORIGINAL TT
     @staticmethod
-    def _nearest(lst, K):
-        return lst[min(range(len(lst)), key=lambda i: abs(lst[i] - K))]
+    def _nearest(l, K):
+        return sorted(l, key=lambda i: abs(i - K))[0]
 
     @staticmethod
     def _convert_seconds(seconds):
@@ -278,18 +267,29 @@ class Transitions:
         return "%02d:%02d:%02d.%03d" % (hours, minutes, seconds, milliseconds * 1000)
 
     @classmethod
-    def _improve_tt(cls, times, silences):
-        tt_seconds_improved = []
-        for i in range(len(times)):
-            if i == 0:  # ignore tt = 0
-                continue
+    def _improve_tt(cls, times, silences, threshold):
+        improved_transition_times = []
+        for _time in times:
+            silence_begin = cls._nearest(
+                [silence[0] for silence in silences], _time)
+            silence_end = cls._nearest(
+                [silence[1] for silence in silences], _time)
+
+            if silence_begin < silence_end:
+                if not silence_begin < _time < silence_end:
+                    improved_transition_times.append(silence_begin)
+                else:
+                    improved_transition_times.append(_time)
+            # teacher speaks before the slide changes
+            elif silence_end < _time and _time - silence_end < threshold:
+                improved_transition_times.append(silence_end)
+            # teacher silent after the slide changes
+            elif silence_begin > _time and silence_begin - _time < threshold:
+                improved_transition_times.append(silence_begin)
             else:
-                nearest_beg = cls._nearest(
-                    [silence[0] for silence in silences], times[i])
-                nearest_end = cls._nearest(
-                    [silence[1] for silence in silences], times[i])
-                tt_seconds_improved.append((nearest_beg + nearest_end) / 2)
-        return tt_seconds_improved
+                improved_transition_times.append(_time)
+
+        return improved_transition_times
 
     # ADD TMARK (TRANSITION MARK)
     @staticmethod
