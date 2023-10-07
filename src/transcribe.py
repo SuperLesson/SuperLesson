@@ -21,7 +21,8 @@ class Transcribe:
 
     def __init__(self, lesson_root: str):
         self.lesson_root = lesson_root
-        self._transcription_path = os.path.join(self.lesson_root, "transcription.txt")
+        self._transcription_path = os.path.join(
+            self.lesson_root, "transcription.txt")
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
@@ -39,20 +40,24 @@ class Transcribe:
         # Run on GPU with FP16
         # model = WhisperModel(model_size, device="cuda", compute_type="float16")
         # or run on GPU with INT8
-        model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+        model = WhisperModel(model_size, device="cuda",
+                             compute_type="int8_float16")
         # or run on CPU with INT8
         # model = WhisperModel(model_size, device="cpu", cpu_threads=16, compute_type="auto")
 
         # informações sobre a função transcribe
         # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
-        segments, _ = model.transcribe(transcription_source, beam_size=5, language="pt", vad_filter=True)
+        segments, _ = model.transcribe(
+            transcription_source, beam_size=5, language="pt", vad_filter=True)
         # segments, info = model.transcribe(video_path, beam_size=5, language = "pt", vad_filter = True, initial_prompt = prompt)
 
         # print("Detected language "%s" with probability %f" % (info.language, info.language_probability))
         lines = []
         for segment in segments:
-            print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-            lines.append("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+            print("[%.2fs -> %.2fs] %s" %
+                  (segment.start, segment.end, segment.text))
+            lines.append("[%.2fs -> %.2fs] %s" %
+                         (segment.start, segment.end, segment.text))
 
         end_execution_time = time.time()
         execution_time = end_execution_time - start_execution_time
@@ -94,7 +99,8 @@ class Transcribe:
         # INPUT TRANSCRIPTION
         with open(tmarks_path, "r") as file:
             transcription = file.read()
-        paragraphs = re.split(r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2})", transcription)
+        paragraphs = re.split(
+            r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2})", transcription)
         paragraphs = [para.strip() for para in paragraphs if para.strip()]
         # print(paragraphs)
 
@@ -106,7 +112,8 @@ class Transcribe:
             for line in file:
                 parts = line.split("->")  # Split each line on the "->"
                 if len(parts) == 2:  # Make sure there are actually two parts
-                    key = parts[0].strip().strip('"')  # Remove any leading/trailing whitespace and quotation marks
+                    # Remove any leading/trailing whitespace and quotation marks
+                    key = parts[0].strip().strip('"')
                     # Check if there"s a word in parentheses at the end, and if so, remove it
                     value = parts[1].split("(")[0].strip().strip('"')
                     prompt_words[key] = value  # Add to dictionary
@@ -115,7 +122,8 @@ class Transcribe:
         for item in paragraphs:
             paragraphs_output.append(self._replace_strings(prompt_words, item))
 
-        replacement_path = os.path.join(self.lesson_root, "transcription_replaced.txt")
+        replacement_path = os.path.join(
+            self.lesson_root, "transcription_replaced.txt")
         with open(replacement_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + "\n")
@@ -133,7 +141,8 @@ class Transcribe:
         # INPUT TRANSCRIPTION WITH MARKS
         with open(replacement_path, 'r') as file:
             transcription = file.read()
-        paragraphs = re.split(r'(==== n=\d+ tt=\d{2}:\d{2}:\d{2})', transcription)
+        paragraphs = re.split(
+            r'(==== n=\d+ tt=\d{2}:\d{2}:\d{2})', transcription)
         paragraphs = [para.strip() for para in paragraphs if para.strip()]
         tt_marks = paragraphs[::2]
         transcription_per_page = paragraphs[1::2]
@@ -157,22 +166,27 @@ class Transcribe:
             # falta contar tokens do contexto
             if self._count_tokens(text) > max_tokens_input:
                 sub_chunks = self._split_text(text, max_tokens_input)
-                print(f"The text in {i} must be broken into pieces to fit Openai API.")
+                print(
+                    f"The text in {i} must be broken into pieces to fit Openai API.")
                 print(text[:50])
                 print("===")
-                transcription_per_page_input[i] = sub_chunks  # chunks is a list
+                # chunks is a list
+                transcription_per_page_input[i] = sub_chunks
 
         # RUNGPT
         start_time = datetime.datetime.now()
 
-        transcription_per_page_output = [None] * len(transcription_per_page_input)
+        transcription_per_page_output = [
+            None] * len(transcription_per_page_input)
         for i, item in enumerate(transcription_per_page_input):
-            if not isinstance(item, list):  # lists exists when input is bigger than 4096 tokens
+            # lists exists when input is bigger than 4096 tokens
+            if not isinstance(item, list):
                 messages = [
                     {"role": "system", "content": context},
                     {"role": "user", "content": item},
                 ]
-                prompt_output = self._try_chat_completion_until_successful(messages)
+                prompt_output = self._try_chat_completion_until_successful(
+                    messages)
                 transcription_per_page_output[i] = prompt_output['choices'][0]['message']['content']
             else:  # if item is a list
                 output_data = []
@@ -181,7 +195,8 @@ class Transcribe:
                         {"role": "system", "content": context},
                         {"role": "user", "content": text}
                     ]
-                    output_data.append(self._try_chat_completion_until_successful(messages))
+                    output_data.append(
+                        self._try_chat_completion_until_successful(messages))
                 text = []
                 for subdata in output_data:
                     text.append(subdata['choices'][0]['message']['content'])
@@ -195,7 +210,8 @@ class Transcribe:
         rejected = 0
         if len(transcription_per_page) == len(transcription_improved):
             for i, _ in enumerate(transcription_per_page):
-                similarity_ratio = self._calculate_difference(transcription_per_page[i], transcription_improved[i])
+                similarity_ratio = self._calculate_difference(
+                    transcription_per_page[i], transcription_improved[i])
                 # similarity ratio between 0 and 1, where 1 means the sequences are identical, and 0 means they are completely different
                 # print(i)
                 # print(len(transcription_per_page[i]))
@@ -217,7 +233,8 @@ class Transcribe:
                 paragraphs_output.append(transcription_improved[i])
 
         # EXPORT RESULT
-        improved_transcription_path = os.path.join(self.lesson_root, "transcription_improved_gpt3.txt")
+        improved_transcription_path = os.path.join(
+            self.lesson_root, "transcription_improved_gpt3.txt")
         with open(improved_transcription_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + '\n')
@@ -266,7 +283,8 @@ class Transcribe:
                         break
                 # If a period is found, split the chunk there
                 if last_period_index is not None:
-                    chunks.append(' '.join(current_chunk[:last_period_index + 1]))
+                    chunks.append(
+                        ' '.join(current_chunk[:last_period_index + 1]))
                     current_chunk = current_chunk[last_period_index + 1:]
                     current_chunk_tokens = len(current_chunk)
                 # If no period is found, split at the current token
@@ -317,5 +335,6 @@ class Transcribe:
     def _calculate_difference(paragraph1, paragraph2):
         words1 = paragraph1.split()
         words2 = paragraph2.split()
-        similarity_ratio = difflib.SequenceMatcher(None, words1, words2).ratio()
+        similarity_ratio = difflib.SequenceMatcher(
+            None, words1, words2).ratio()
         return similarity_ratio

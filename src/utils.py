@@ -55,7 +55,8 @@ class LessonFiles:
                  transcribe_with: Optional[FileType] = None,
                  annotate_with: Optional[FileType] = None):
         current_script_directory = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(current_script_directory, '..'))
+        project_root = os.path.abspath(
+            os.path.join(current_script_directory, '..'))
 
         lesson_root = os.path.join(project_root, 'lessons', lesson)
         if os.path.exists(lesson_root):
@@ -94,9 +95,11 @@ class LessonFiles:
     def transcription_source(self) -> LessonFile:
         """The file to be used for transcription."""
         if self._transcription_source is None:
-            transcription_file = self._find_lesson_file([self._transcribe_with, FileType.video, FileType.audio])
+            transcription_file = self._find_lesson_file(
+                [self._transcribe_with, FileType.video, FileType.audio])
             if transcription_file is None:
-                raise ValueError(f"Transcription file not found on {self.lesson_root}")
+                raise ValueError(
+                    f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = transcription_file
 
         return self._transcription_source
@@ -105,7 +108,8 @@ class LessonFiles:
     def lecture_notes(self) -> LessonFile:
         """The file to be used for annotation."""
         if self._lecture_notes is None:
-            notes_file = self._find_lesson_file([self._annotate_with, FileType.notes, FileType.video])
+            notes_file = self._find_lesson_file(
+                [self._annotate_with, FileType.notes, FileType.video])
             if notes_file is None:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
             self._lecture_notes = notes_file

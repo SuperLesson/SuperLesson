@@ -41,7 +41,8 @@ class Annotate:
     def _add_notes_to_pdf(self, input_file, note_texts):
         input_pdf = pypdf.PdfReader(input_file)
         if input_pdf.is_encrypted:
-            input_pdf.decrypt("")  # If there's a password, replace the empty string with the password
+            # If there's a password, replace the empty string with the password
+            input_pdf.decrypt("")
         output_pdf = pypdf.PdfWriter()
 
         for index in range(len(input_pdf.pages)):
@@ -75,7 +76,8 @@ class Annotate:
 
                 # Add the note annotation to the page
                 if "/Annots" not in page:
-                    page[pypdf.generic.NameObject("/Annots")] = pypdf.generic.ArrayObject()
+                    page[pypdf.generic.NameObject(
+                        "/Annots")] = pypdf.generic.ArrayObject()
 
                 page["/Annots"].append(note)
 

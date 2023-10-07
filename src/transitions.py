@@ -51,18 +51,24 @@ class Transitions:
                     tt_seconds_improved[i - 1] = tt_seconds[i]
         else:
             print("tt and tt_improved should have same len")
-        print(f"tt improvement failed for {count} out of {len(tt_seconds)} tts")
+        print(
+            f"tt improvement failed for {count} out of {len(tt_seconds)} tts")
 
         # TIME ABSOLUTE > TIME RELATIVE TO FIRST LINE
         df_tt_improved = pd.DataFrame(tt_seconds_improved, columns=["time"])
         new_row = pd.DataFrame({"time": [0]})
-        df_tt_improved = pd.concat([new_row, df_tt_improved]).reset_index(drop=True)
+        df_tt_improved = pd.concat(
+            [new_row, df_tt_improved]).reset_index(drop=True)
         df_tt_improved = df_tt_improved.round(2)
-        df_tt_improved["datetime"] = pd.to_datetime(df_tt_improved["time"], unit="s")  # "format" applies for the input, not the output
+        # "format" applies for the input, not the output
+        df_tt_improved["datetime"] = pd.to_datetime(
+            df_tt_improved["time"], unit="s")
         df_tt_improved["relative_tt"] = pd.NaT
         for i in range(len(df_tt_improved)):
-            df_tt_improved.at[i, "relative_tt"] = (df_tt_improved.at[i, "datetime"] - df_tt_improved.at[0, "datetime"])
-        df_tt_improved["relative_tt"] = pd.to_timedelta(df_tt_improved["relative_tt"])
+            df_tt_improved.at[i, "relative_tt"] = (
+                df_tt_improved.at[i, "datetime"] - df_tt_improved.at[0, "datetime"])
+        df_tt_improved["relative_tt"] = pd.to_timedelta(
+            df_tt_improved["relative_tt"])
         df_tt_improved = df_tt_improved.drop(columns=["datetime"])
         # print(df_tt_improved.dtypes)
 
@@ -74,45 +80,63 @@ class Transitions:
             start_time, end_time_text = line.split(" -> ")
             end_time, text = end_time_text.split("]  ")
             text = text.strip()
-            data.append([float(start_time.replace("[", "").replace("s", "")), float(end_time.replace("s", "")), text])
-        df_transcription = pd.DataFrame(data, columns=["start_time", "end_time", "text"])
-        new_row = pd.DataFrame({"start_time": [0], "end_time": [0], "text": [""]})
-        df_transcription = pd.concat([new_row, df_transcription]).reset_index(drop=True)
+            data.append([float(start_time.replace("[", "").replace(
+                "s", "")), float(end_time.replace("s", "")), text])
+        df_transcription = pd.DataFrame(
+            data, columns=["start_time", "end_time", "text"])
+        new_row = pd.DataFrame(
+            {"start_time": [0], "end_time": [0], "text": [""]})
+        df_transcription = pd.concat(
+            [new_row, df_transcription]).reset_index(drop=True)
 
         # TIME IN SECONDS -> TIME IN DATETIME -> TIME RELATIVE TO FIRST LINE
-        df_transcription["start_time_datetime"] = pd.to_datetime(df_transcription["start_time"], dayfirst=True, unit="s")
-        df_transcription["end_time_datetime"] = pd.to_datetime(df_transcription["end_time"], dayfirst=True, unit="s")
+        df_transcription["start_time_datetime"] = pd.to_datetime(
+            df_transcription["start_time"], dayfirst=True, unit="s")
+        df_transcription["end_time_datetime"] = pd.to_datetime(
+            df_transcription["end_time"], dayfirst=True, unit="s")
         df_transcription["relative_start_time"] = pd.NaT
         for i in range(len(df_transcription)):
-            df_transcription.at[i, "relative_start_time"] = (df_transcription.at[i, "start_time_datetime"] - df_transcription.at[0, "start_time_datetime"])
+            df_transcription.at[i, "relative_start_time"] = (
+                df_transcription.at[i, "start_time_datetime"] - df_transcription.at[0, "start_time_datetime"])
 
-        df_transcription["relative_start_time"] = pd.to_timedelta(df_transcription["relative_start_time"])
+        df_transcription["relative_start_time"] = pd.to_timedelta(
+            df_transcription["relative_start_time"])
         df_transcription["relative_end_time"] = pd.NaT
         for i in range(len(df_transcription)):
-            df_transcription.at[i, "relative_end_time"] = (df_transcription.at[i, "end_time_datetime"] - df_transcription.at[0, "start_time_datetime"])
-        df_transcription["relative_end_time"] = pd.to_timedelta(df_transcription["relative_end_time"])
-        df_transcription = df_transcription.drop(columns=["start_time_datetime", "end_time_datetime"])
-        df_transcription = df_transcription.reindex(columns=["start_time", "end_time", "relative_start_time", "relative_end_time", "text"])
+            df_transcription.at[i, "relative_end_time"] = (
+                df_transcription.at[i, "end_time_datetime"] - df_transcription.at[0, "start_time_datetime"])
+        df_transcription["relative_end_time"] = pd.to_timedelta(
+            df_transcription["relative_end_time"])
+        df_transcription = df_transcription.drop(
+            columns=["start_time_datetime", "end_time_datetime"])
+        df_transcription = df_transcription.reindex(
+            columns=["start_time", "end_time", "relative_start_time", "relative_end_time", "text"])
         # print(df_transcription)
 
         for i, row_tt in df_tt_improved.iterrows():
             for j, row_transcription in df_transcription.iterrows():
-                dif1 = pd.to_timedelta(row_tt["relative_tt"]) - pd.to_timedelta(df_transcription["relative_start_time"].iloc[j])
+                dif1 = pd.to_timedelta(
+                    row_tt["relative_tt"]) - pd.to_timedelta(df_transcription["relative_start_time"].iloc[j])
                 if j < len(df_transcription) - 1:
-                    dif2 = pd.to_timedelta(row_tt["relative_tt"]) - pd.to_timedelta(df_transcription["relative_start_time"].iloc[j + 1])
+                    dif2 = pd.to_timedelta(row_tt["relative_tt"]) - pd.to_timedelta(
+                        df_transcription["relative_start_time"].iloc[j + 1])
                 else:
-                    dif2 = pd.to_timedelta(row_tt["relative_tt"]) - pd.to_timedelta(row_transcription["relative_end_time"])
+                    dif2 = pd.to_timedelta(
+                        row_tt["relative_tt"]) - pd.to_timedelta(row_transcription["relative_end_time"])
                 zero_td = pd.Timedelta(0, unit="s")
                 if (dif1 >= zero_td) and (dif2 < zero_td):
                     if abs(dif1) <= abs(dif2):
-                        df_transcription.at[j, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j, "text"]
+                        df_transcription.at[j, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(
+                            df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j, "text"]
                         break
                     else:
                         if j < len(df_transcription) - 1:
-                            df_transcription.at[j + 1, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j + 1, "text"]
+                            df_transcription.at[j + 1, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(
+                                df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j + 1, "text"]
                             break
                         else:
-                            df_transcription.at[j, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j, "text"]
+                            df_transcription.at[j, "text"] = "====" + " n=" + str(i) + " tt=" + self._pd_timedelta_to_str(
+                                df_tt_improved.at[i, "relative_tt"]) + "\n" + df_transcription.at[j, "text"]
                             break
 
         # Se eu precisar voltar atrás: _pd_timedelta_to_str(df_transcription.at[j,"relative_start_time"])
@@ -124,13 +148,18 @@ class Transitions:
         # contar quantas tts e verificar se há o mesmo tanto no arquivo de saída
         # selected_columns = df_transcription[["start_time", "end_time", "text"]]  # para debug
         selected_columns = df_transcription[["text"]]
-        selected_columns_string = selected_columns.to_string(index=False, header=False)
-        stripped_text = " ".join(line.strip() for line in selected_columns_string.split("\n") if line.strip())
-        continuos_text = stripped_text.replace(". ", ".").replace(", ", ",").replace(".", ". ").replace(",", ", ")
-        paragraphs = re.split(r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2}\\n)", continuos_text)
+        selected_columns_string = selected_columns.to_string(
+            index=False, header=False)
+        stripped_text = " ".join(
+            line.strip() for line in selected_columns_string.split("\n") if line.strip())
+        continuos_text = stripped_text.replace(". ", ".").replace(
+            ", ", ",").replace(".", ". ").replace(",", ", ")
+        paragraphs = re.split(
+            r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2}\\n)", continuos_text)
         paragraphs = [para for para in paragraphs if para.strip()]
         paragraphs = [re.sub(r"\\n$", "", line) for line in paragraphs]
-        tmarks_path = os.path.join(self.lesson_root, "transcription_tmarks.txt")
+        tmarks_path = os.path.join(
+            self.lesson_root, "transcription_tmarks.txt")
         with open(tmarks_path, "w", encoding="utf-8") as f:
             for line in paragraphs:
                 f.write(line + "\n")
@@ -195,10 +224,12 @@ class Transitions:
         # RELATIVE TIME OF TTS
         df_tt = pd.DataFrame(sorted_terms, columns=["time"])
         df_tt["time"] = df_tt["time"].str.strip()
-        df_tt["datetime"] = pd.to_datetime(df_tt["time"], format="%H-%M-%S")  # "format" applies for the input, not the output
+        # "format" applies for the input, not the output
+        df_tt["datetime"] = pd.to_datetime(df_tt["time"], format="%H-%M-%S")
         df_tt["relative_tt"] = pd.NaT
         for i in range(len(df_tt)):
-            df_tt.at[i, "relative_tt"] = (df_tt.at[i, "datetime"] - df_tt.at[0, "datetime"])
+            df_tt.at[i, "relative_tt"] = (
+                df_tt.at[i, "datetime"] - df_tt.at[0, "datetime"])
         df_tt["relative_tt"] = pd.to_timedelta(df_tt["relative_tt"])
         df_tt = df_tt.drop(columns=["datetime"])
         return df_tt
@@ -207,8 +238,10 @@ class Transitions:
     def _detect_silence(audio_file, silence_threshold_factor=10):
         audio = AudioSegment.from_wav(audio_file)
         silence_thresh = audio.dBFS - silence_threshold_factor
-        silences = silence.detect_silence(audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1)
-        silences = [((start / 1000), (stop / 1000)) for start, stop in silences]  # convert to seconds
+        silences = silence.detect_silence(
+            audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1)
+        silences = [((start / 1000), (stop / 1000))
+                    for start, stop in silences]  # convert to seconds
         return silences
 
     def verify_tbreaks_with_mpv(self, video_path):
@@ -217,7 +250,8 @@ class Transitions:
 
         # GO SLIGHTLY BEFORE TTS
         time_translation = 6
-        df_tt["relative_time"] = df_tt["relative_tt"] - pd.Timedelta(seconds=time_translation)
+        df_tt["relative_time"] = df_tt["relative_tt"] - \
+            pd.Timedelta(seconds=time_translation)
         # remove invalid backwards times
         df_tt = df_tt[df_tt["relative_time"] >= pd.Timedelta(seconds=0)]
 
@@ -242,8 +276,9 @@ class Transitions:
         player.play(file_path)
         player.wait_until_playing()
         for time_string in times:
-            t = time.strptime(time_string.split(',')[0],'%H:%M:%S')
-            t = datetime.timedelta(hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
+            t = time.strptime(time_string.split(',')[0], '%H:%M:%S')
+            t = datetime.timedelta(
+                hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
             player.seek(t, reference="absolute", precision="exact")
             time.sleep(duration)
 
@@ -273,8 +308,10 @@ class Transitions:
             if i == 0:  # ignore tt = 0
                 continue
             else:
-                nearest_beg = cls._nearest([silence[0] for silence in silences], times[i])
-                nearest_end = cls._nearest([silence[1] for silence in silences], times[i])
+                nearest_beg = cls._nearest(
+                    [silence[0] for silence in silences], times[i])
+                nearest_end = cls._nearest(
+                    [silence[1] for silence in silences], times[i])
                 tt_seconds_improved.append((nearest_beg + nearest_end) / 2)
         return tt_seconds_improved
 
@@ -285,5 +322,6 @@ class Transitions:
         total_seconds = pd_tdelta.total_seconds()
         hours, remainder = divmod(total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
-        time_str = "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
+        time_str = "{:02}:{:02}:{:02}".format(
+            int(hours), int(minutes), int(seconds))
         return time_str
