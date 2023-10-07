@@ -8,21 +8,18 @@ from storage.lesson import FileType
 def main(args: Namespace):
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
-    lesson_root = lesson_files.lesson_root
 
-    transcribe = Transcribe(lesson_root)
-    transcription_source = lesson_files.transcription_source.path
-    transcription_output = transcribe.single_file(transcription_source)
+    transcribe = Transcribe(lesson_files.transcription_source)
+    transcription_output = transcribe.single_file()
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError(
             "Transcribing from audio is not implemented yet")
-    transitions = Transitions(lesson_root)
-    tmarks_path = transitions.insert_tmarks(
-        transcription_source, transcription_output)
+    transitions = Transitions(lesson_files.transcription_source)
+    tmarks_path = transitions.insert_tmarks(transcription_output)
     input("Press Enter to continue...")
-    transitions.verify_tbreaks_with_mpv(transcription_source)
+    transitions.verify_tbreaks_with_mpv()
     input("Press Enter to continue...")
     replacement_path = transcribe.replace_words(tmarks_path)
     if replacement_path is not None:
@@ -35,8 +32,8 @@ def main(args: Namespace):
     if lesson_files.lecture_notes.file_type == FileType.video:
         raise NotImplementedError(
             "Annotating from video is not implemented yet")
-    annotate = Annotate(lesson_root)
-    annotate.to_pdf(lesson_files.lecture_notes)
+    annotate = Annotate(lesson_files.lecture_notes)
+    annotate.to_pdf()
 
 
 def parse_args() -> Namespace:

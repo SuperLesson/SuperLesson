@@ -25,6 +25,10 @@ class LessonFile:
         self.path = path
         self.file_type = self._file_type(name)
 
+    @property
+    def full_path(self) -> Path:
+        return self.path / self.name
+
     @staticmethod
     def _file_type(name: str) -> FileType:
         """Return the file type of a given file name."""
