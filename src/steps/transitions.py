@@ -2,6 +2,7 @@ import datetime
 import re
 import subprocess
 import time
+from typing import List
 
 import mpv
 import pandas as pd
@@ -252,30 +253,17 @@ class Transitions:
         # remove invalid backwards times
         df_tt = df_tt[df_tt["relative_time"] >= pd.Timedelta(seconds=0)]
 
-        tt_seconds = df_tt["relative_time"].dt.total_seconds().tolist()
-        tt_seconds = [int(time) for time in tt_seconds]
-
-        tt_seconds = [self._seconds_to_hms(time) for time in tt_seconds]
+        tt_seconds = list(df_tt["relative_time"])
 
         play_duration = 12
-        self._play_video_at_times(tt_seconds[1:], play_duration)
-
-    @staticmethod
-    def _seconds_to_hms(seconds):
-        hours, remainder = divmod(seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        time_string = "{:02}:{:02}:{:02}".format(hours, minutes, seconds)
-        return time_string
+        self._play_video_at_times(tt_seconds, play_duration)
 
     def _play_video_at_times(self, times, duration):
         player = mpv.MPV()
         player.play(str(self._transcription_source.full_path))
         player.wait_until_playing()
-        for time_string in times:
-            t = time.strptime(time_string.split(',')[0], '%H:%M:%S')
-            t = datetime.timedelta(
-                hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
-            player.seek(t, reference="absolute", precision="exact")
+        for _time in times:
+            player.seek(_time, reference="absolute", precision="exact")
             time.sleep(duration)
 
     # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
