@@ -2,7 +2,8 @@ import mimetypes
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
 
 
 class FileType(Enum):
@@ -16,10 +17,10 @@ class LessonFile:
     """Class to represent a lesson file."""
 
     name: str
-    path: str
+    path: Path
     file_type: FileType
 
-    def __init__(self, name: str, path: str):
+    def __init__(self, name: str, path: Path):
         self.name = name
         self.path = path
         self.file_type = self._file_type(name)
@@ -49,43 +50,42 @@ class LessonFile:
 class LessonFiles:
     """Class to find all files for a given lesson id."""
 
-    lesson_root: str
+    lesson_root: Path
 
     def __init__(self, lesson: str,
                  transcribe_with: Optional[FileType] = None,
                  annotate_with: Optional[FileType] = None):
-        current_script_directory = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(
-            os.path.join(current_script_directory, '../..'))
-
-        lesson_root = os.path.join(project_root, 'lessons', lesson)
-        if os.path.exists(lesson_root):
-            self.lesson_root = lesson_root
-        elif os.path.exists(lesson):
-            self.lesson_root = lesson
+        if os.path.exists(lesson):
+            self.lesson_root = Path(lesson)
         else:
-            raise ValueError(f"Lesson {lesson} not found")
+            src_path = Path(__file__).parent
+            lesson_root =  src_path / "../../lessons" / lesson
+            lesson_root = lesson_root.resolve()
 
-        self._files: list[LessonFile] = []
+            if lesson_root.exists():
+                self.lesson_root = lesson_root
+            else:
+                raise ValueError(f"Lesson {lesson} not found")
+
+        self._files: List[LessonFile] = []
         self._transcribe_with = transcribe_with
         self._annotate_with = annotate_with
         self._transcription_source: Optional[LessonFile] = None
         self._lecture_notes: Optional[LessonFile] = None
 
     @property
-    def files(self) -> list[LessonFile]:
+    def files(self) -> List[LessonFile]:
         """All usable files in lesson folder."""
         if len(self._files) > 0:
             return self._files
 
         print("Searching for files...")
-        for root, _, _files in os.walk(self.lesson_root):
-            for file in _files:
-                file_path = os.path.join(root, file)
-                try:
-                    self._files.append(LessonFile(file, file_path))
-                except ValueError:
-                    pass
+        for file in self.lesson_root.iterdir():
+            try:
+                self._files.append(LessonFile(file.name, self.lesson_root))
+                print(self._files[-1])
+            except ValueError:
+                pass
 
         # TODO: test for duplicate file types
 
@@ -116,7 +116,7 @@ class LessonFiles:
 
         return self._lecture_notes
 
-    def _find_lesson_file(self, accepted_types: list[Optional[FileType]]) -> Optional[LessonFile]:
+    def _find_lesson_file(self, accepted_types: List[Optional[FileType]]) -> Optional[LessonFile]:
         for file_type in accepted_types:
             if file_type is None:
                 continue
@@ -126,6 +126,6 @@ class LessonFiles:
 
         return None
 
-    def _get_files(self, file_type: FileType) -> list[LessonFile]:
+    def _get_files(self, file_type: FileType) -> List[LessonFile]:
         """Get all files of a given type."""
         return [file for file in self.files if file.file_type == file_type]
