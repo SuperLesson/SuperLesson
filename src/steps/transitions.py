@@ -22,8 +22,8 @@ class Transitions:
         # TODO: use logging library here
         print(audio_path)
 
-        df_tt = self._get_relative_times()
-        tt_seconds = df_tt["relative_tt"].dt.total_seconds().tolist()
+        relative_times = self._get_relative_times()
+        tt_seconds = [_time.total_seconds() for _time in relative_times]
 
         if audio_path.exists():
             print("Audio file already exists")
@@ -203,34 +203,25 @@ class Transitions:
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
 
-    def _get_relative_times(self):
-        # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
+    def _get_relative_times(self) -> List[datetime.timedelta]:
         tt_directory = self._transcription_source.path / "tframes"
-        image_names = []
+        png_names = []
         for file in tt_directory.iterdir():
             if file.suffix == ".png":
-                image_names.append(file.name)
+                png_names.append(file.name)
 
-        prefix = self._transcription_source.name + "_"
-        sufix = ".png"
-        cleaned_terms = [name.replace(prefix, "") for name in image_names]
-        cleaned_terms = [name.replace(sufix, "") for name in cleaned_terms]
-        sorted_terms = sorted(cleaned_terms)
-        first_two = sorted_terms[0][:2]
-        sorted_terms.insert(0, first_two + "-00-00")
+        def to_timedelta(h, m, s): return datetime.timedelta(
+            hours=int(h), minutes=int(m), seconds=int(s))
 
-        # RELATIVE TIME OF TTS
-        df_tt = pd.DataFrame(sorted_terms, columns=["time"])
-        df_tt["time"] = df_tt["time"].str.strip()
-        # "format" applies for the input, not the output
-        df_tt["datetime"] = pd.to_datetime(df_tt["time"], format="%H-%M-%S")
-        df_tt["relative_tt"] = pd.NaT
-        for i in range(len(df_tt)):
-            df_tt.at[i, "relative_tt"] = (
-                df_tt.at[i, "datetime"] - df_tt.at[0, "datetime"])
-        df_tt["relative_tt"] = pd.to_timedelta(df_tt["relative_tt"])
-        df_tt = df_tt.drop(columns=["datetime"])
-        return df_tt
+        # we have png files in the format XXXXXX.mp4_HH-MM-SS.png
+        timestamps = []
+        for name in png_names:
+            match = re.search(r"_(\d{2}-\d{2}-\d{2})\.png", name)
+            assert match is not None
+            timestamp = to_timedelta(*match.group(1).split("-"))
+            timestamps.append(timestamp)
+
+        return sorted(timestamps)
 
     @staticmethod
     def _detect_silence(audio_file, silence_threshold_factor=10):
@@ -244,19 +235,20 @@ class Transitions:
 
     def verify_tbreaks_with_mpv(self):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        df_tt = self._get_relative_times()
+        relative_times = self._get_relative_times()
 
         # GO SLIGHTLY BEFORE TTS
-        time_translation = 6
-        df_tt["relative_time"] = df_tt["relative_tt"] - \
-            pd.Timedelta(seconds=time_translation)
-        # remove invalid backwards times
-        df_tt = df_tt[df_tt["relative_time"] >= pd.Timedelta(seconds=0)]
-
-        tt_seconds = list(df_tt["relative_time"])
+        # TODO: parameterize time translation
+        time_translation = datetime.timedelta(seconds=6)
+        translated_times_seconds = list()
+        for _time in relative_times:
+            new_tt = _time - time_translation
+            if new_tt < pd.Timedelta(seconds=0):
+                new_tt = pd.Timedelta(seconds=0)
+            translated_times_seconds.append(new_tt.total_seconds())
 
         play_duration = 12
-        self._play_video_at_times(tt_seconds, play_duration)
+        self._play_video_at_times(translated_times_seconds, play_duration)
 
     def _play_video_at_times(self, times, duration):
         player = mpv.MPV()
