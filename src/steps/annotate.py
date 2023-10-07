@@ -1,45 +1,22 @@
-import os
-
 import pypdf
+from storage import LessonFile
 
 
 class Annotate:
     """Class to annotate a lesson."""
 
-    lesson_root: str
+    def __init__(self, lecture_notes: LessonFile):
+        self._lecture_notes = lecture_notes
 
-    def __init__(self, lesson_root: str):
-        self.lesson_root = lesson_root
-
-    def to_pdf(self, input_file):
-        # Usage example
-        N = len(pypdf.PdfReader(input_file).pages)
+    def to_pdf(self):
+        N = len(pypdf.PdfReader(self._lecture_notes.full_path).pages)
         blank_transcription = [""] * N
 
-        self._add_notes_to_pdf(input_file, blank_transcription)
+        self._add_notes_to_pdf(blank_transcription)
 
-        # BUG:
-        # for lesson_id = "2023-05-22_uc05_teste_cardiopulmonar_esforco". Comments won't go to the right corner, but to the left
-
-        # "LIMPA" O PDF
-        # input_file = "2023-05-02_uc10_nervos.pdf"
-        # output_file = "2023-05-02_uc10_nervos_cleaned.pdf"
-
-        # def clean_pdf(input_file, output_file):
-        #     reader = PdfReader(input_file)
-        #     writer = PdfWriter()
-
-        #     for i in range(reader.getNumPages()):
-        #         page = reader.getPage(i)
-        #         writer.addPage(page)
-
-        #     with open(output_file, "wb") as output_pdf:
-        #         writer.write(output_pdf)
-
-        # clean_pdf(input_file, output_file)
-
-    def _add_notes_to_pdf(self, input_file, note_texts):
-        input_pdf = pypdf.PdfReader(input_file)
+    def _add_notes_to_pdf(self, note_texts):
+        lesson_notes = self._lecture_notes.full_path
+        input_pdf = pypdf.PdfReader(lesson_notes)
         if input_pdf.is_encrypted:
             # If there's a password, replace the empty string with the password
             input_pdf.decrypt("")
@@ -83,5 +60,5 @@ class Annotate:
 
             output_pdf.add_page(page)
 
-        with open(os.path.join(self.lesson_root, "transcription.pdf"), "wb") as f:
+        with open(self._lecture_notes.full_path / "transcription.pdf", "wb") as f:
             output_pdf.write(f)

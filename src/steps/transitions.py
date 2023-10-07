@@ -1,5 +1,4 @@
 import datetime
-import os
 import re
 import subprocess
 import time
@@ -7,25 +6,25 @@ import time
 import mpv
 import pandas as pd
 from pydub import AudioSegment, silence
+from storage import LessonFile
 
 
 class Transitions:
-    lesson_root: str
+    def __init__(self, transcription_source: LessonFile):
+        self._transcription_source = transcription_source
 
-    def __init__(self, lesson_root: str):
-        self.lesson_root = lesson_root
-
-    def insert_tmarks(self, video_path, transcription_path):
+    def insert_tmarks(self, transcription_path):
         # TODO: use audio as source for transcription
-        audio_path = re.sub(r"\.\w*$", ".wav", video_path)
+        video_path = self._transcription_source.full_path
+        audio_path = video_path.with_suffix(".wav")
 
         # TODO: use logging library here
         print(audio_path)
 
-        df_tt = self._get_relative_times(video_path)
+        df_tt = self._get_relative_times()
         tt_seconds = df_tt["relative_tt"].dt.total_seconds().tolist()
 
-        if os.path.isfile(audio_path):
+        if audio_path.exists():
             print("Audio file already exists")
         else:
             self._extract_audio(video_path, audio_path)
@@ -158,8 +157,7 @@ class Transitions:
             r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2}\\n)", continuos_text)
         paragraphs = [para for para in paragraphs if para.strip()]
         paragraphs = [re.sub(r"\\n$", "", line) for line in paragraphs]
-        tmarks_path = os.path.join(
-            self.lesson_root, "transcription_tmarks.txt")
+        tmarks_path = self._transcription_source.path / "transcription_tmarks.txt"
         with open(tmarks_path, "w", encoding="utf-8") as f:
             for line in paragraphs:
                 f.write(line + "\n")
@@ -204,16 +202,15 @@ class Transitions:
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
 
-    def _get_relative_times(self, transcription_path):
+    def _get_relative_times(self):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        tt_directory = os.path.join(self.lesson_root, "tframes")
+        tt_directory = self._transcription_source.path / "tframes"
         image_names = []
-        for filename in os.listdir(tt_directory):
-            if filename.endswith(".png"):
-                image_names.append(filename)
+        for file in tt_directory.iterdir():
+            if file.suffix == ".png":
+                image_names.append(file.name)
 
-        transcription_file = os.path.basename(transcription_path)
-        prefix = transcription_file + "_"
+        prefix = self._transcription_source.name + "_"
         sufix = ".png"
         cleaned_terms = [name.replace(prefix, "") for name in image_names]
         cleaned_terms = [name.replace(sufix, "") for name in cleaned_terms]
@@ -244,9 +241,9 @@ class Transitions:
                     for start, stop in silences]  # convert to seconds
         return silences
 
-    def verify_tbreaks_with_mpv(self, video_path):
+    def verify_tbreaks_with_mpv(self):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        df_tt = self._get_relative_times(video_path)
+        df_tt = self._get_relative_times()
 
         # GO SLIGHTLY BEFORE TTS
         time_translation = 6
@@ -261,7 +258,7 @@ class Transitions:
         tt_seconds = [self._seconds_to_hms(time) for time in tt_seconds]
 
         play_duration = 12
-        self._play_video_at_times(video_path, tt_seconds[1:], play_duration)
+        self._play_video_at_times(tt_seconds[1:], play_duration)
 
     @staticmethod
     def _seconds_to_hms(seconds):
@@ -270,10 +267,9 @@ class Transitions:
         time_string = "{:02}:{:02}:{:02}".format(hours, minutes, seconds)
         return time_string
 
-    @staticmethod
-    def _play_video_at_times(file_path, times, duration):
+    def _play_video_at_times(self, times, duration):
         player = mpv.MPV()
-        player.play(file_path)
+        player.play(str(self._transcription_source.full_path))
         player.wait_until_playing()
         for time_string in times:
             t = time.strptime(time_string.split(',')[0], '%H:%M:%S')

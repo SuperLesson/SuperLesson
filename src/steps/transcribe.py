@@ -5,31 +5,28 @@ import re
 import subprocess
 import time
 from datetime import timedelta
+from pathlib import Path
 
 import nltk
 import openai
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
 from nltk.tokenize import word_tokenize
+from storage import LessonFile
 
 
 class Transcribe:
     """Class to transcribe a lesson."""
 
-    lesson_root: str
-    _transcription_path: str
-
-    def __init__(self, lesson_root: str):
-        self.lesson_root = lesson_root
-        self._transcription_path = os.path.join(
-            self.lesson_root, "transcription.txt")
+    def __init__(self, transcription_source: LessonFile):
+        self._transcription_source = transcription_source
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
 
-    def single_file(self, transcription_source):
-        transcription_path = self._transcription_path
-        if os.path.isfile(transcription_path) and input("Transcription file already exists. Overwrite? (y/n) ") != "y":
+    def single_file(self) -> Path:
+        transcription_path = self._transcription_source.path / "transcription.txt"
+        if transcription_path.exists() and input("Transcription file already exists. Overwrite? (y/n) ") != "y":
             return transcription_path
 
         start_execution_time = time.time()
@@ -47,8 +44,8 @@ class Transcribe:
 
         # informações sobre a função transcribe
         # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
-        segments, _ = model.transcribe(
-            transcription_source, beam_size=5, language="pt", vad_filter=True)
+        segments, _ = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
+                                       language="pt", vad_filter=True)
         # segments, info = model.transcribe(video_path, beam_size=5, language = "pt", vad_filter = True, initial_prompt = prompt)
 
         # print("Detected language "%s" with probability %f" % (info.language, info.language_probability))
@@ -91,8 +88,8 @@ class Transcribe:
         return transcription_path
 
     def replace_words(self, tmarks_path):
-        data_folder = os.path.join(self.lesson_root, "data")
-        if not os.path.exists(data_folder):
+        data_folder = self._transcription_source.path / "data"
+        if not data_folder.exists():
             print(f"{data_folder} doesn't exist, so no replacements will be done")
             return None
 
@@ -106,7 +103,7 @@ class Transcribe:
 
         # TODO: make this portable
         # INPUT DATA FOR SUBSTITUTION
-        input_path = os.path.join(data_folder, "resp.txt")
+        input_path = data_folder / "resp.txt"
         with open(input_path, "r") as file:
             prompt_words = {}
             for line in file:
@@ -122,8 +119,7 @@ class Transcribe:
         for item in paragraphs:
             paragraphs_output.append(self._replace_strings(prompt_words, item))
 
-        replacement_path = os.path.join(
-            self.lesson_root, "transcription_replaced.txt")
+        replacement_path = self._transcription_source.path / "transcription_replaced.txt"
         with open(replacement_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + "\n")
@@ -233,8 +229,7 @@ class Transcribe:
                 paragraphs_output.append(transcription_improved[i])
 
         # EXPORT RESULT
-        improved_transcription_path = os.path.join(
-            self.lesson_root, "transcription_improved_gpt3.txt")
+        improved_transcription_path = self._transcription_source / "transcription_improved_gpt3.txt"
         with open(improved_transcription_path, "w", encoding="utf-8") as f:
             for line in paragraphs_output:
                 f.write(line + '\n')
