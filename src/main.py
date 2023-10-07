@@ -7,7 +7,8 @@ from utils import FileType, LessonFiles
 
 
 def main(args: Namespace):
-    lesson_files = LessonFiles(args.lesson, args.transcribe_with, args.annotate_with)
+    lesson_files = LessonFiles(
+        args.lesson, args.transcribe_with, args.annotate_with)
     lesson_root = lesson_files.lesson_root
 
     transcribe = Transcribe(lesson_root)
@@ -16,9 +17,11 @@ def main(args: Namespace):
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
-        raise NotImplementedError("Transcribing from audio is not implemented yet")
+        raise NotImplementedError(
+            "Transcribing from audio is not implemented yet")
     transitions = Transitions(lesson_root)
-    tmarks_path = transitions.insert_tmarks(transcription_source, transcription_output)
+    tmarks_path = transitions.insert_tmarks(
+        transcription_source, transcription_output)
     input("Press Enter to continue...")
     transitions.verify_tbreaks_with_mpv(transcription_source)
     input("Press Enter to continue...")
@@ -31,7 +34,8 @@ def main(args: Namespace):
     transcribe.check_differences(replacement_path, improved_path)
     input("Press Enter to continue...")
     if lesson_files.lecture_notes.file_type == FileType.video:
-        raise NotImplementedError("Annotating from video is not implemented yet")
+        raise NotImplementedError(
+            "Annotating from video is not implemented yet")
     annotate = Annotate(lesson_root)
     annotate.to_pdf(lesson_files.lecture_notes)
 
