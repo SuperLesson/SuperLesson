@@ -2,6 +2,7 @@ import datetime
 import re
 import subprocess
 import time
+from pathlib import Path
 from typing import List
 
 import mpv
@@ -22,7 +23,8 @@ class Transitions:
         # TODO: use logging library here
         print(audio_path)
 
-        relative_times = self._get_relative_times()
+        png_paths = self._get_png_paths()
+        relative_times = self._get_relative_times([path.name for path in png_paths])
         total_seconds = [_time.total_seconds() for _time in relative_times]
 
         if audio_path.exists():
@@ -191,14 +193,17 @@ class Transitions:
 
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
-
-    def _get_relative_times(self) -> List[datetime.timedelta]:
+    
+    def _get_png_paths(self) -> List[Path]:
         tt_directory = self._transcription_source.path / "tframes"
-        png_names = []
+        png_paths = []
         for file in tt_directory.iterdir():
             if file.suffix == ".png":
-                png_names.append(file.name)
+                png_paths.append(file)
 
+        return png_paths
+
+    def _get_relative_times(self, png_names: List[str]) -> List[datetime.timedelta]:
         def to_timedelta(h, m, s): return datetime.timedelta(
             hours=int(h), minutes=int(m), seconds=int(s))
 
@@ -224,7 +229,8 @@ class Transitions:
 
     def verify_tbreaks_with_mpv(self):
         # EXTRACT TRANSITION TIMES (TT) FROM TFRAMES
-        relative_times = self._get_relative_times()
+        png_paths = self._get_png_paths()
+        relative_times  = self._get_relative_times([path.name for path in png_paths])
 
         # GO SLIGHTLY BEFORE TTS
         # TODO: parameterize time translation
