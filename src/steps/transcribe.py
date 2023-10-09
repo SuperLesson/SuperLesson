@@ -86,7 +86,7 @@ class Transcribe:
             string = string.replace(old_string, new_string)
         return string
 
-    @Step.step(Step.improve_punctuation, Step.replace_words)
+    @Step.step(Step.improve_punctuation, Step.insert_tmarks)
     def improve_punctuation(self):
         context = """The following is a transcription of a lecture.
         The transcription is complete, but it has formatting and punctuation mistakes.

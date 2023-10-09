@@ -13,7 +13,7 @@ class Annotate:
         self._lecture_notes = lecture_notes
         self.slides = slides
 
-    @Step.step(Step.annotate, Step.improve_punctuation)
+    @Step.step(Step.annotate, Step.insert_tmarks)
     def to_pdf(self):
         N = len(pypdf.PdfReader(self._lecture_notes.full_path).pages)
         blank_transcription = [""] * N

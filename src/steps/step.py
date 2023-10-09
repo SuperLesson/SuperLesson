@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable, Iterable, List, Optional
 
 
 class Step(Enum):
@@ -14,10 +14,27 @@ class Step(Enum):
     annotate = "annotate"
 
     @staticmethod
+    def to_list() -> List[Step]:
+        return list([s for s in Step])
+
+    @classmethod
+    def get_last(cls, step: Step) -> Iterable[Step]:
+        if step is cls.transcribe:
+            return
+        steps = cls.to_list()
+        index = steps.index(step) - 1
+        for s in steps[index::-1]:
+            yield s
+
+    def __lt__(self, other: Step) -> bool:
+        steps = self.to_list()
+        return steps.index(self) < steps.index(other)
+
+    @staticmethod
     def step(step: Step, depends_on: Optional[Step] = None):
         def decorator(func: Callable):
             def wrapper(instance, *args, **kwargs):
-                if not instance.slides.load(step):
+                if not instance.slides.load(step, depends_on):
                     if depends_on is not None:
                         raise Exception(
                             f"Couldn't load from previous step: {step.value} depends on {depends_on}")

@@ -72,9 +72,13 @@ class Store:
 
         return data
 
-    def load(self, step: Step) -> Optional[Any]:
-        if self.in_storage(step):
-            return self._load(step)
+    def load(self, step: Step, depends_on: Step) -> Optional[Any]:
+        for s in Step.get_last(step):
+            if s < depends_on:
+                raise Exception(
+                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet.")
+            if self.in_storage(s):
+                return self._load(s)
 
         return None
 
