@@ -7,11 +7,10 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
-import nltk
 import openai
+import tiktoken
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
-from nltk.tokenize import word_tokenize
 from storage import LessonFile
 
 
@@ -152,8 +151,8 @@ class Transcribe:
         - NÃO FAÇA NENHUMA MODIFICAÇÃO DE CONTEÚDO, SOMENTE DE FORMATAÇÃO.
         """
 
-        # IDENTIFY TEXT THAT COULD SURPASS GPT3.5 LIMIT SIZE (4096 TOKENS)
-        nltk.download('punkt')
+        sys_tokens = self._count_tokens(context)
+        sys_message = {"role": "system", "content": context}
 
         margin = 20  # to avoid errors
         max_input_tokens = (4096 - sys_tokens) // 2 - margin
@@ -230,9 +229,11 @@ class Transcribe:
         subprocess.Popen(["gnome-terminal", "--", "bash", "-c", command])
 
     @staticmethod
-    def _count_tokens(text):
-        tokens = word_tokenize(text)
-        return len(tokens)
+    def _count_tokens(text: str) -> int:
+        # Based on: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
+        tokens_per_message = 4
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text)) + tokens_per_message
 
     @classmethod
     def _split_text(cls, text, max_tokens):
