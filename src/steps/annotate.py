@@ -1,15 +1,19 @@
 import logging
 
 import pypdf
-from storage import LessonFile
+from storage import LessonFile, Slides
+
+from .step import Step
 
 
 class Annotate:
     """Class to annotate a lesson."""
 
-    def __init__(self, lecture_notes: LessonFile):
+    def __init__(self, slides: Slides, lecture_notes: LessonFile):
         self._lecture_notes = lecture_notes
+        self.slides = slides
 
+    @Step.step(Step.annotate, Step.improve_punctuation)
     def to_pdf(self):
         N = len(pypdf.PdfReader(self._lecture_notes.full_path).pages)
         blank_transcription = [""] * N

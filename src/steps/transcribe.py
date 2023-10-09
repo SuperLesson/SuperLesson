@@ -1,33 +1,31 @@
 import difflib
 import logging
 import os
-import re
 import subprocess
 from datetime import datetime
-from pathlib import Path
 from time import sleep
 
 import openai
 import tiktoken
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
-from storage import LessonFile
+from storage import LessonFile, Slide, Slides
+
+from .step import Step
 
 
 class Transcribe:
     """Class to transcribe a lesson."""
 
-    def __init__(self, transcription_source: LessonFile):
+    def __init__(self, slides: Slides, transcription_source: LessonFile):
         self._transcription_source = transcription_source
+        self.slides = slides
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
 
-    def single_file(self) -> Path:
-        transcription_path = self._transcription_source.path / "transcription.txt"
-        if transcription_path.exists() and input("Transcription file already exists. Overwrite? (y/n) ") != "y":
-            return transcription_path
-
+    @Step.step(Step.transcribe)
+    def single_file(self):
         bench_start = datetime.now()
 
         # TODO: add a flag to select the model size
@@ -47,53 +45,20 @@ class Transcribe:
                                           language="pt", vad_filter=True)
 
         logging.info(f"Detected language {info.language} with probability {info.language_probability}")
-        lines = []
         for segment in segments:
+            self.slides.append(
+                Slide(segment.text, (segment.start, segment.end)))
             logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-            lines.append("[%.2fs -> %.2fs] %s" %
-                         (segment.start, segment.end, segment.text))
 
         bench_duration = datetime.now() - bench_start
         logging.info(f"Transcription took {bench_duration}")
 
-        with open(transcription_path, "w") as f:
-            for item in lines:
-                f.write("%s\n" % item)
-
-        # TESTAR PROGRESS BAR https://github.com/guillaumekln/faster-whisper/issues/80
-        # from tqdm import tqdm
-        # from faster_whisper import WhisperModel
-
-        # model = WhisperModel("tiny")
-        # segments, info = model.transcribe("audio.mp3", vad_filter=True)
-
-        # total_duration = round(info.duration, 2)  # Same precision as the Whisper timestamps.
-        # timestamps = 0.0  # to get the current segments
-
-        # with tqdm(total=total_duration, unit=" audio seconds") as pbar:
-        #     for segment in segments:
-        #         pbar.update(segment.end - timestamps)
-        #         timestamps = segment.end
-        #     if timestamps < info.duration: # silence at the end of the audio
-        #         pbar.update(info.duration - timestamps)
-
-        # ADICIONAR PROMPT À TRANSCRIÇÃO https://platform.openai.com/docs/guides/speech-to-text/prompting
-        # https://github.com/openai/whisper/discussions/355
-        # options = whisper.DecodingOptions(fp16=False, prompt="vocab")
-        return transcription_path
-
-    def replace_words(self, tmarks_path):
+    @Step.step(Step.replace_words, Step.insert_tmarks)
+    def replace_words(self):
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
             logging.warning(f"{data_folder} doesn't exist, so no replacements will be done")
-            return None
-
-        # INPUT TRANSCRIPTION
-        with open(tmarks_path, "r") as file:
-            transcription = file.read()
-        paragraphs = re.split(
-            r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2})", transcription)
-        paragraphs = [para.strip() for para in paragraphs if para.strip()]
+            return
 
         # TODO: make this portable
         # INPUT DATA FOR SUBSTITUTION
@@ -109,16 +74,10 @@ class Transcribe:
                     value = parts[1].split("(")[0].strip().strip('"')
                     prompt_words[key] = value  # Add to dictionary
 
-        paragraphs_output = []
-        for item in paragraphs:
-            paragraphs_output.append(self._replace_strings(prompt_words, item))
-
-        replacement_path = self._transcription_source.path / "transcription_replaced.txt"
-        with open(replacement_path, "w", encoding="utf-8") as f:
-            for line in paragraphs_output:
-                f.write(line + "\n")
-
-        return replacement_path
+        for i in range(len(self.slides)):
+            transcription = self.slides[i].transcription
+            replaced = self._replace_strings(prompt_words, transcription)
+            self.slides[i].transcription = replaced
 
     # SUBSTITUTE
     @staticmethod
@@ -127,23 +86,12 @@ class Transcribe:
             string = string.replace(old_string, new_string)
         return string
 
-    def improve_punctuation(self, replacement_path):
-        # INPUT TRANSCRIPTION WITH MARKS
-        with open(replacement_path, 'r') as file:
-            transcription = file.read()
-        paragraphs = re.split(
-            r'(==== n=\d+ tt=\d{2}:\d{2}:\d{2})', transcription)
-        paragraphs = [para.strip() for para in paragraphs if para.strip()]
-        tt_marks = paragraphs[::2]
-        transcription_per_page = paragraphs[1::2]
-
-        context = """O texto a seguir precisa ser preparado para impressão.
-        - formate o texto, sem fazer modificações de conteúdo.
-        - corrija qualquer erro de digitação ou de grafia.
-        - faça as quebras de paragrafação que forem necessárias.
-        - coloque as pontuações adequadas.
-        - a saída deve ser somente a resposta, sem frases como "aqui está o texto revisado e formatado".
-        - NÃO FAÇA NENHUMA MODIFICAÇÃO DE CONTEÚDO, SOMENTE DE FORMATAÇÃO.
+    @Step.step(Step.improve_punctuation, Step.replace_words)
+    def improve_punctuation(self):
+        context = """The following is a transcription of a lecture.
+        The transcription is complete, but it has formatting and punctuation mistakes.
+        Fix ONLY the formatting and punctuation mistakes. Do not change the content.
+        The output must be only the transcription, without any other text.
         """
 
         sys_tokens = self._count_tokens(context)
@@ -154,14 +102,11 @@ class Transcribe:
 
         bench_start = datetime.now()
 
-        # RUN GPT
-        improved_transcription = []
-        for text in transcription_per_page:
+        for slide in self.slides:
+            text = slide.transcription
             total_tokens = self._count_tokens(text)
             if total_tokens <= max_input_tokens:
-                improved_transcription.append(
-                    self._improve_text_with_chatgpt(text, sys_message, max_input_tokens)
-                )
+                slide.transcription = self._improve_text_with_chatgpt(text, sys_message, max_input_tokens)
                 continue
 
             logging.info("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
@@ -172,23 +117,7 @@ class Transcribe:
                 gpt_chunks.append(
                     self._improve_text_with_chatgpt(chunk, sys_message, max_input_tokens)
                 )
-            improved_transcription.append(" ".join(gpt_chunks))
-
-        logging.info("GPT improvement took", datetime.now() - bench_start)
-
-        # CREATE OUTPUT
-        paragraphs_output = []
-        for tt_mark, improved_text in zip(tt_marks, improved_transcription):
-            paragraphs_output.append(tt_mark)
-            paragraphs_output.append(improved_text)
-
-        # EXPORT RESULT
-        improved_transcription_path = self._transcription_source / "transcription_improved_gpt3.txt"
-        with open(improved_transcription_path, "w", encoding="utf-8") as f:
-            for line in paragraphs_output:
-                f.write(line + '\n')
-
-        return improved_transcription_path
+            slide.transcription = " ".join(gpt_chunks)
 
     @classmethod
     def _improve_text_with_chatgpt(cls, text, sys_message, max_tokens):
