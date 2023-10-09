@@ -247,37 +247,43 @@ class Transcribe:
         tokens = word_tokenize(text)
         return len(tokens)
 
-    @staticmethod
-    def _split_text(text, max_tokens):
-        tokens = word_tokenize(text)
-        # print(tokens)
-        chunks = []
-        current_chunk = []
-        current_chunk_tokens = 0
-        for token in tokens:
-            if current_chunk_tokens + 1 <= max_tokens:
-                current_chunk.append(token)
-                current_chunk_tokens += 1
-            else:
-                # Find the last period in the current_chunk
-                last_period_index = None
-                for i, chunk_token in enumerate(reversed(current_chunk)):
-                    if chunk_token == '.':
-                        last_period_index = len(current_chunk) - 1 - i
-                        break
-                # If a period is found, split the chunk there
-                if last_period_index is not None:
-                    chunks.append(
-                        ' '.join(current_chunk[:last_period_index + 1]))
-                    current_chunk = current_chunk[last_period_index + 1:]
-                    current_chunk_tokens = len(current_chunk)
-                # If no period is found, split at the current token
+    @classmethod
+    def _split_text(cls, text, max_tokens):
+        periods = text.split('.')
+        if len(periods) > 1:
+            chunks = []
+            total_tokens = 0
+            start = 0
+            for i in range(len(periods)):
+                tokens = cls._count_tokens(periods[i])
+                if tokens > max_tokens:
+                    if start != i:
+                        chunks.append('. '.join(periods[start:i]))
+                    chunks.extend(cls._split_text(periods[i], max_tokens))
+                    start = i + 1
+                    total_tokens = 0
+                elif total_tokens + tokens > max_tokens:
+                    chunks.append('. '.join(periods[start:i]))
+                    start = i
+                    total_tokens = tokens
                 else:
-                    chunks.append(' '.join(current_chunk))
-                    current_chunk = [token]
-                    current_chunk_tokens = 1
-        if current_chunk:
-            chunks.append(' '.join(current_chunk))
+                    total_tokens += tokens
+
+            return chunks
+
+        words = text.split()
+        chunks = []
+        start = 0
+        total_tokens = 0
+        for i in range(len(words)):
+            tokens = cls._count_tokens(words[i])
+            if total_tokens + tokens > max_tokens:
+                chunks.append(' '.join(words[start:i]))
+                start = i
+                total_tokens = tokens
+            else:
+                total_tokens += tokens
+
         return chunks
 
     @staticmethod
