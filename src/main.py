@@ -2,7 +2,7 @@ import logging
 from argparse import ArgumentParser, Namespace
 
 from steps import Annotate, Transcribe, Transitions
-from storage import LessonFiles
+from storage import LessonFiles, Slides
 from storage.lesson import FileType
 
 
@@ -10,30 +10,29 @@ def main(args: Namespace):
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
 
-    transcribe = Transcribe(lesson_files.transcription_source)
-    transcription_output = transcribe.single_file()
+    slides = Slides(lesson_files.lesson_root)
+    transcribe = Transcribe(slides, lesson_files.transcription_source)
+    transcribe.single_file()
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError(
             "Transcribing from audio is not implemented yet")
-    transitions = Transitions(lesson_files.transcription_source)
-    tmarks_path = transitions.insert_tmarks(transcription_output)
+    transitions = Transitions(slides, lesson_files.transcription_source)
+    transitions.insert_tmarks()
     input("Press Enter to continue...")
     transitions.verify_tbreaks_with_mpv()
     input("Press Enter to continue...")
-    replacement_path = transcribe.replace_words(tmarks_path)
-    if replacement_path is not None:
-        input("Press Enter to continue...")
-    else:
-        replacement_path = tmarks_path
-    improved_path = transcribe.improve_punctuation(replacement_path)
-    transcribe.check_differences(replacement_path, improved_path)
+    transcribe.replace_words()
+    input("Press Enter to continue...")
+    transcribe.improve_punctuation()
+    # TODO: fix this
+    # transcribe.check_differences(replacement_path, improved_path)
     input("Press Enter to continue...")
     if lesson_files.lecture_notes.file_type == FileType.video:
         raise NotImplementedError(
             "Annotating from video is not implemented yet")
-    annotate = Annotate(lesson_files.lecture_notes)
+    annotate = Annotate(slides, lesson_files.lecture_notes)
     annotate.to_pdf()
 
 
