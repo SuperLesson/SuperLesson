@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils import LessonFiles
+from src.storage import LessonFiles
 
 
 class TestLessonFiles:

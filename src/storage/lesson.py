@@ -56,7 +56,7 @@ class LessonFiles:
                  annotate_with: Optional[FileType] = None):
         current_script_directory = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.abspath(
-            os.path.join(current_script_directory, '..'))
+            os.path.join(current_script_directory, '../..'))
 
         lesson_root = os.path.join(project_root, 'lessons', lesson)
         if os.path.exists(lesson_root):
