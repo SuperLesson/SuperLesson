@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 from dataclasses import dataclass
@@ -44,6 +45,7 @@ class LessonFile:
             case "text":
                 file_type = FileType.notes
             case _:
+                # application
                 if name.endswith(".pdf"):
                     file_type = FileType.notes
                 else:
@@ -71,6 +73,8 @@ class LessonFiles:
             else:
                 raise ValueError(f"Lesson {lesson} not found")
 
+        logging.debug(f"Lesson root: {self.lesson_root}")
+
         self._files: List[LessonFile] = []
         self._transcribe_with = transcribe_with
         self._annotate_with = annotate_with
@@ -83,11 +87,11 @@ class LessonFiles:
         if len(self._files) > 0:
             return self._files
 
-        print("Searching for files...")
+        logging.info("Searching for files...")
         for file in self.lesson_root.iterdir():
             try:
+                logging.debug(f"Found file: {file}")
                 self._files.append(LessonFile(file.name, self.lesson_root))
-                print(self._files[-1])
             except ValueError:
                 pass
 
@@ -106,6 +110,7 @@ class LessonFiles:
                     f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = transcription_file
 
+        logging.debug(f"Transcription source: {self._transcription_source}")
         return self._transcription_source
 
     @property
@@ -118,6 +123,7 @@ class LessonFiles:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
             self._lecture_notes = notes_file
 
+        logging.debug(f"Lecture notes: {self._lecture_notes}")
         return self._lecture_notes
 
     def _find_lesson_file(self, accepted_types: List[Optional[FileType]]) -> Optional[LessonFile]:

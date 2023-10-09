@@ -1,3 +1,5 @@
+import logging
+
 import pypdf
 from storage import LessonFile
 
@@ -60,5 +62,7 @@ class Annotate:
 
             output_pdf.add_page(page)
 
-        with open(self._lecture_notes.full_path / "transcription.pdf", "wb") as f:
-            output_pdf.write(f)
+        output_path = self._lecture_notes.path / "transcription.pdf"
+        logging.info(f"Saving annotated pdf to {output_path}")
+        with open(output_path, "wb") as f:
+             output_pdf.write(f)
