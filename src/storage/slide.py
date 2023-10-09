@@ -59,10 +59,10 @@ class Slide:
 
 
 class Slides(UserList):
-    def __init__(self, lesson_root: Path):
+    def __init__(self, lesson_root: Path, run_all: bool):
         super().__init__()
         self.lesson_root = lesson_root
-        self._store = Store(lesson_root)
+        self._store = Store(lesson_root, run_all)
         self._last_state = None
 
     @staticmethod
