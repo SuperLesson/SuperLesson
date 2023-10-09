@@ -1,11 +1,11 @@
-import datetime
 import difflib
+import logging
 import os
 import re
 import subprocess
-import time
-from datetime import timedelta
+from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 import openai
 import tiktoken
@@ -28,7 +28,7 @@ class Transcribe:
         if transcription_path.exists() and input("Transcription file already exists. Overwrite? (y/n) ") != "y":
             return transcription_path
 
-        start_execution_time = time.time()
+        bench_start = datetime.now()
 
         # TODO: add a flag to select the model size
         model_size = "large-v2"
@@ -43,22 +43,18 @@ class Transcribe:
 
         # informações sobre a função transcribe
         # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
-        segments, _ = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
-                                       language="pt", vad_filter=True)
-        # segments, info = model.transcribe(video_path, beam_size=5, language = "pt", vad_filter = True, initial_prompt = prompt)
+        segments, info = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
+                                          language="pt", vad_filter=True)
 
-        # print("Detected language "%s" with probability %f" % (info.language, info.language_probability))
+        logging.info(f"Detected language {info.language} with probability {info.language_probability}")
         lines = []
         for segment in segments:
-            print("[%.2fs -> %.2fs] %s" %
-                  (segment.start, segment.end, segment.text))
+            logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
             lines.append("[%.2fs -> %.2fs] %s" %
                          (segment.start, segment.end, segment.text))
 
-        end_execution_time = time.time()
-        execution_time = end_execution_time - start_execution_time
-        time_str = str(timedelta(seconds=execution_time))
-        print(time_str)
+        bench_duration = datetime.now() - bench_start
+        logging.info(f"Transcription took {bench_duration}")
 
         with open(transcription_path, "w") as f:
             for item in lines:
@@ -89,7 +85,7 @@ class Transcribe:
     def replace_words(self, tmarks_path):
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
-            print(f"{data_folder} doesn't exist, so no replacements will be done")
+            logging.warning(f"{data_folder} doesn't exist, so no replacements will be done")
             return None
 
         # INPUT TRANSCRIPTION
@@ -98,7 +94,6 @@ class Transcribe:
         paragraphs = re.split(
             r"(==== n=\d+ tt=\d{2}:\d{2}:\d{2})", transcription)
         paragraphs = [para.strip() for para in paragraphs if para.strip()]
-        # print(paragraphs)
 
         # TODO: make this portable
         # INPUT DATA FOR SUBSTITUTION
@@ -157,7 +152,7 @@ class Transcribe:
         margin = 20  # to avoid errors
         max_input_tokens = (4096 - sys_tokens) // 2 - margin
 
-        start_time = datetime.datetime.now()
+        bench_start = datetime.now()
 
         # RUN GPT
         improved_transcription = []
@@ -169,9 +164,8 @@ class Transcribe:
                 )
                 continue
 
-            print("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
-            print(text[:50])
-            print("===")
+            logging.info("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
+            logging.debug(text[:50])
 
             gpt_chunks = []
             for chunk in self._split_text(text, max_input_tokens):
@@ -180,9 +174,7 @@ class Transcribe:
                 )
             improved_transcription.append(" ".join(gpt_chunks))
 
-        end_time = datetime.datetime.now()
-        delta_time = end_time - start_time
-        print('execution time: ', delta_time)
+        logging.info("GPT improvement took", datetime.now() - bench_start)
 
         # CREATE OUTPUT
         paragraphs_output = []
@@ -211,14 +203,11 @@ class Transcribe:
 
         similarity_ratio = cls._calculate_difference(text, improved_text)
         # different = 0 < similarity_ratio < 1 = same
-        # print(i)
-        # print(len(transcription_per_page[i]))
-        # print(similarity_ratio)
-        # print("====")
         if similarity_ratio < 0.40 and len(text) > 15:
-            print(similarity_ratio)
-            print(text)
-            print(improved_text)
+            logging.info("The text was not improved by ChatGPT-3.5-turbo.")
+            logging.debug("Similarity:", similarity_ratio)
+            logging.debug("ORIGINAL:\n", text)
+            logging.debug("IMPROVED:\n", improved_text)
             return text
         else:
             return improved_text
@@ -290,14 +279,14 @@ class Transcribe:
     def _try_chat_completion_until_successful(cls, messages, max_tries=5):
         for tries in range(max_tries):
             try:
+                logging.info("Asking GPT to improve punctuation")
                 result = cls._ai(messages, 0.1)
                 return result['choices'][0]['message']['content']
             except Exception as e:
-                print(f"Error: {e}")
-                print(messages[1]["content"][:50])
-                print(tries)
-                print("====")
-                time.sleep(20.5)
+                logging.info(f"Retrying {tries} out of {max_tries}")
+                logging.debug("Error:", e)
+                logging.debug("Message:", messages[1]["content"][:50])
+                sleep(20.5)
 
     # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)
     @staticmethod

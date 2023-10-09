@@ -1,4 +1,5 @@
 import datetime
+import logging
 import re
 import subprocess
 import time
@@ -20,16 +21,14 @@ class Transitions:
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
 
-        # TODO: use logging library here
-        print(audio_path)
-
         png_paths = self._get_png_paths()
         relative_times = self._get_relative_times([path.name for path in png_paths])
         total_seconds = [_time.total_seconds() for _time in relative_times]
 
         if audio_path.exists():
-            print("Audio file already exists")
+            logging.warning("Audio file already exists")
         else:
+            logging.info(f"Extracting audio to {audio_path}")
             self._extract_audio(video_path, audio_path)
 
         # silence_threshold_factor=10 worked for lesson_id = "2023-05-22_uc05_transporte_gases"
@@ -61,7 +60,6 @@ class Transitions:
         df_tt_improved["relative_tt"] = pd.to_timedelta(
             df_tt_improved["relative_tt"])
         df_tt_improved = df_tt_improved.drop(columns=["datetime"])
-        # print(df_tt_improved.dtypes)
 
         # IMPORT TRANSCRIPTION
         with open(transcription_path, "r") as f:
@@ -102,7 +100,6 @@ class Transitions:
             columns=["start_time_datetime", "end_time_datetime"])
         df_transcription = df_transcription.reindex(
             columns=["start_time", "end_time", "relative_start_time", "relative_end_time", "text"])
-        # print(df_transcription)
 
         for i, row_tt in df_tt_improved.iterrows():
             for j, row_transcription in df_transcription.iterrows():
@@ -133,7 +130,6 @@ class Transitions:
         # Se eu precisar voltar atrás: _pd_timedelta_to_str(df_transcription.at[j,"relative_start_time"])
 
         # pd.set_option("display.max_rows", None)
-        # print(df_transcription.text)
 
         # ADICIONAR VERIFICAÇÃO DE QUEBRAS
         # contar quantas tts e verificar se há o mesmo tanto no arquivo de saída
@@ -250,6 +246,7 @@ class Transitions:
         player.play(str(self._transcription_source.full_path))
         player.wait_until_playing()
         for _time in times:
+            logging.debug(f"Playing video at time {_time}")
             player.seek(_time, reference="absolute", precision="exact")
             time.sleep(duration)
 
@@ -274,6 +271,7 @@ class Transitions:
 
     @classmethod
     def _improve_tt(cls, times, silences, threshold):
+        logging.info("Improving transition times")
         improved_transition_times = []
         for _time in times:
             silence_begin = cls._nearest(

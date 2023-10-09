@@ -1,3 +1,4 @@
+import logging
 from argparse import ArgumentParser, Namespace
 
 from steps import Annotate, Transcribe, Transitions
@@ -51,9 +52,20 @@ def parse_args() -> Namespace:
                         choices=[FileType.notes.value, FileType.video.value],
                         default=None,
                         help="Use text/pdf or video as source for lecture notes")
+    mut_group = parser.add_mutually_exclusive_group()
+    mut_group.add_argument("--verbose", "-v",
+                           action="store_true",
+                           help="Increase output verbosity")
+    mut_group.add_argument("--debug", "-d",
+                           action="store_true",
+                           help="Print debug information")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.verbose:
+        logging.basicConfig(level=logging.INFO)
     main(args)
