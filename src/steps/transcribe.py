@@ -133,7 +133,7 @@ class Transcribe:
             string = string.replace(old_string, new_string)
         return string
 
-    def improve_transcription(self, replacement_path):
+    def improve_punctuation(self, replacement_path):
         # INPUT TRANSCRIPTION WITH MARKS
         with open(replacement_path, 'r') as file:
             transcription = file.read()
@@ -234,19 +234,8 @@ class Transcribe:
             for line in paragraphs_output:
                 f.write(line + '\n')
 
-        # clean_transcription = []
-        # spent_tokens = []
-
-        # for item in prompt_output:
-        #     print(item['choices'][0]['message']['content']) #remove after tests
-        #     print("====")
-        #     clean_transcription.append(item['choices'][0]['message']['content'])
-        #     spent_tokens.append(item['usage']['total_tokens'])
-
-        # if len(messages_improve_transcription) != len(clean_transcription):
-        #     print("A transcription block was lost")
-
         return improved_transcription_path
+
 
     def check_differences(self, replacement_path, improved_path):
         # DIFF

@@ -26,7 +26,7 @@ def main(args: Namespace):
         input("Press Enter to continue...")
     else:
         replacement_path = tmarks_path
-    improved_path = transcribe.improve_transcription(replacement_path)
+    improved_path = transcribe.improve_punctuation(replacement_path)
     transcribe.check_differences(replacement_path, improved_path)
     input("Press Enter to continue...")
     if lesson_files.lecture_notes.file_type == FileType.video:
