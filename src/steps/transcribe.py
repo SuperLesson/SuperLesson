@@ -295,24 +295,16 @@ class Transcribe:
     # error handling is not correct
     @classmethod
     def _try_chat_completion_until_successful(cls, messages, max_tries=5):
-        tries = 0
-        success = False
-        result = None
-        while not success and tries < max_tries:
+        for tries in range(max_tries):
             try:
                 result = cls._ai(messages, 0.1)
-                success = True
+                return result['choices'][0]['message']['content']
             except Exception as e:
                 print(f"Error: {e}")
                 print(messages[1]["content"][:50])
                 print(tries)
                 print("====")
                 time.sleep(20.5)
-                tries += 1
-        if success:
-            return result
-        else:
-            return []
 
     # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)
     @staticmethod
