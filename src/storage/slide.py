@@ -127,8 +127,8 @@ class Slides(UserList):
     def has_data(self) -> bool:
         return len(self.data) != 0
 
-    def load(self, step: Step) -> bool:
-        obj = self._store.load(step)
+    def load(self, step: Step, depends_on: Step) -> bool:
+        obj = self._store.load(step, depends_on)
         if obj is None:
             logging.debug("No data to load")
             return False
