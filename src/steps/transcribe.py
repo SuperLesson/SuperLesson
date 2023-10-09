@@ -155,78 +155,41 @@ class Transcribe:
         # IDENTIFY TEXT THAT COULD SURPASS GPT3.5 LIMIT SIZE (4096 TOKENS)
         nltk.download('punkt')
 
-        transcription_per_page_input = transcription_per_page.copy()
+        margin = 20  # to avoid errors
+        max_input_tokens = (4096 - sys_tokens) // 2 - margin
 
-        for i, text in enumerate(transcription_per_page):
-            max_tokens_input = 1000  # For gpt-3.5-turbo total tokesn = 4096
-            # falta contar tokens do contexto
-            if self._count_tokens(text) > max_tokens_input:
-                sub_chunks = self._split_text(text, max_tokens_input)
-                print(
-                    f"The text in {i} must be broken into pieces to fit Openai API.")
-                print(text[:50])
-                print("===")
-                # chunks is a list
-                transcription_per_page_input[i] = sub_chunks
-
-        # RUNGPT
         start_time = datetime.datetime.now()
 
-        transcription_per_page_output = [
-            None] * len(transcription_per_page_input)
-        for i, item in enumerate(transcription_per_page_input):
-            # lists exists when input is bigger than 4096 tokens
-            if not isinstance(item, list):
-                messages = [
-                    {"role": "system", "content": context},
-                    {"role": "user", "content": item},
-                ]
-                prompt_output = self._try_chat_completion_until_successful(
-                    messages)
-                transcription_per_page_output[i] = prompt_output['choices'][0]['message']['content']
-            else:  # if item is a list
-                output_data = []
-                for text in item:
-                    messages = [
-                        {"role": "system", "content": context},
-                        {"role": "user", "content": text}
-                    ]
-                    output_data.append(
-                        self._try_chat_completion_until_successful(messages))
-                text = []
-                for subdata in output_data:
-                    text.append(subdata['choices'][0]['message']['content'])
-                transcription_per_page_output[i] = " ".join(text)
+        # RUN GPT
+        improved_transcription = []
+        for text in transcription_per_page:
+            total_tokens = self._count_tokens(text)
+            if total_tokens <= max_input_tokens:
+                improved_transcription.append(
+                    self._improve_text_with_chatgpt(text, sys_message, max_input_tokens)
+                )
+                continue
+
+            print("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
+            print(text[:50])
+            print("===")
+
+            gpt_chunks = []
+            for chunk in self._split_text(text, max_input_tokens):
+                gpt_chunks.append(
+                    self._improve_text_with_chatgpt(chunk, sys_message, max_input_tokens)
+                )
+            improved_transcription.append(" ".join(gpt_chunks))
 
         end_time = datetime.datetime.now()
         delta_time = end_time - start_time
         print('execution time: ', delta_time)
 
-        transcription_improved = transcription_per_page_output.copy()
-        rejected = 0
-        if len(transcription_per_page) == len(transcription_improved):
-            for i, _ in enumerate(transcription_per_page):
-                similarity_ratio = self._calculate_difference(
-                    transcription_per_page[i], transcription_improved[i])
-                # similarity ratio between 0 and 1, where 1 means the sequences are identical, and 0 means they are completely different
-                # print(i)
-                # print(len(transcription_per_page[i]))
-                # print(similarity_ratio)
-                # print("====")
-                if similarity_ratio < 0.40 and len(transcription_per_page[i]) > 15:
-                    rejected += 1
-                    print(similarity_ratio)
-                    print(transcription_per_page[i])
-                    print(transcription_improved[i])
-                    transcription_improved[i] = transcription_per_page[i]
-        print('transcrições rejeitadas: ', rejected)
-
         # CREATE OUTPUT
         paragraphs_output = []
-        if len(tt_marks) == len(transcription_improved):
-            for i, _ in enumerate(transcription_improved):
-                paragraphs_output.append(tt_marks[i])
-                paragraphs_output.append(transcription_improved[i])
+        for tt_mark, improved_text in zip(tt_marks, improved_transcription):
+            paragraphs_output.append(tt_mark)
+            paragraphs_output.append(improved_text)
 
         # EXPORT RESULT
         improved_transcription_path = self._transcription_source / "transcription_improved_gpt3.txt"
@@ -236,6 +199,30 @@ class Transcribe:
 
         return improved_transcription_path
 
+    @classmethod
+    def _improve_text_with_chatgpt(cls, text, sys_message, max_tokens):
+        messages = [
+            sys_message,
+            {"role": "user", "content": text},
+        ]
+        improved_text = cls._try_chat_completion_until_successful(messages)
+
+        if improved_text is None:
+            return text
+
+        similarity_ratio = cls._calculate_difference(text, improved_text)
+        # different = 0 < similarity_ratio < 1 = same
+        # print(i)
+        # print(len(transcription_per_page[i]))
+        # print(similarity_ratio)
+        # print("====")
+        if similarity_ratio < 0.40 and len(text) > 15:
+            print(similarity_ratio)
+            print(text)
+            print(improved_text)
+            return text
+        else:
+            return improved_text
 
     def check_differences(self, replacement_path, improved_path):
         # DIFF
@@ -292,7 +279,6 @@ class Transcribe:
             model="gpt-3.5-turbo",
             # model="gpt-4",
             messages=messages,
-            max_tokens=2048,  # max_tokens + message tokens must be < 4096 tokens
             n=1,
             temperature=temperature
         )
