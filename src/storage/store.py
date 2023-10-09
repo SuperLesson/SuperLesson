@@ -35,9 +35,10 @@ class Store:
         Step.improve_punctuation: File("improved", [Format.json, Format.txt]),
     }
 
-    def __init__(self, lesson_root: Path):
+    def __init__(self, lesson_root: Path, run_all: bool):
         self._lesson_root = lesson_root
         self._storage_root = lesson_root / ".data"
+        self._run_all = run_all
 
     def in_storage(self, step: Step) -> bool:
         return self._storage_map.get(step) is not None
@@ -80,7 +81,7 @@ class Store:
         return data
 
     def load(self, step: Step, depends_on: Step) -> Tuple[Loaded, Optional[Any]]:
-        if self.in_storage(step):
+        if not self._run_all and self.in_storage(step):
             data = self._load(step)
             if data is not None:
                 if input(f"{step.value} has already been run. Run again? (y/N) ").lower() != "y":

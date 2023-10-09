@@ -10,7 +10,7 @@ def main(args: Namespace):
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
 
-    slides = Slides(lesson_files.lesson_root)
+    slides = Slides(lesson_files.lesson_root, args.run_all)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
     transcribe.single_file()
     input("Press Enter to continue...")
@@ -51,6 +51,9 @@ def parse_args() -> Namespace:
                         choices=[FileType.notes.value, FileType.video.value],
                         default=None,
                         help="Use text/pdf or video as source for lecture notes")
+    parser.add_argument("--run-all",
+                        action="store_true",
+                        help="Run all steps")
     mut_group = parser.add_mutually_exclusive_group()
     mut_group.add_argument("--verbose", "-v",
                            action="store_true",
