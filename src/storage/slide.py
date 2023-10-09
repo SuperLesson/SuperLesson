@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 from steps.step import Step
 
-from .store import Store
+from .store import Loaded, Store
 
 
 @dataclass
@@ -63,6 +63,7 @@ class Slides(UserList):
         super().__init__()
         self.lesson_root = lesson_root
         self._store = Store(lesson_root)
+        self._last_state = None
 
     @staticmethod
     def _load_slide(slide_obj: dict) -> Slide:
@@ -127,16 +128,20 @@ class Slides(UserList):
     def has_data(self) -> bool:
         return len(self.data) != 0
 
-    def load(self, step: Step, depends_on: Step) -> bool:
-        obj = self._store.load(step, depends_on)
-        if obj is None:
+    def load(self, step: Step, depends_on: Step) -> Loaded:
+        if self._last_state is not Loaded.already_run and self.has_data():
+            logging.debug("Data already loaded")
+            return Loaded.in_memory
+        loaded, obj = self._store.load(step, depends_on)
+        if loaded is Loaded.none:
             logging.debug("No data to load")
-            return False
+            return Loaded.none
         data: List[Slide] = []
         for i in range(len(obj)):
             data.append(self._load_slide(obj[i]))
         self.data = data
-        return True
+        self._last_state = loaded
+        return loaded
 
     def save(self, step: Step):
         if self._store.in_storage(step):

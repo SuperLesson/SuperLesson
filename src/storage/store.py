@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 from steps.step import Step
 
@@ -12,6 +12,13 @@ from steps.step import Step
 class Format(Enum):
     json = "json"
     txt = "txt"
+
+
+class Loaded(Enum):
+    new = "loaded_new"
+    already_run = "already_loaded"
+    none = "not_loaded"
+    in_memory = "in_memory"
 
 
 @dataclass
@@ -72,15 +79,21 @@ class Store:
 
         return data
 
-    def load(self, step: Step, depends_on: Step) -> Optional[Any]:
+    def load(self, step: Step, depends_on: Step) -> Tuple[Loaded, Optional[Any]]:
+        if self.in_storage(step):
+            data = self._load(step)
+            if data is not None:
+                if input(f"{step.value} has already been run. Run again? (y/N) ").lower() != "y":
+                    return (Loaded.already_run, data)
+
         for s in Step.get_last(step):
             if s < depends_on:
                 raise Exception(
                     f"Step {step} depends on {depends_on}, but {depends_on} was not run yet.")
             if self.in_storage(s):
-                return self._load(s)
+                return (Loaded.new, self._load(s))
 
-        return None
+        return (Loaded.none, None)
 
     def save_json(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.json)

@@ -34,10 +34,14 @@ class Step(Enum):
     def step(step: Step, depends_on: Optional[Step] = None):
         def decorator(func: Callable):
             def wrapper(instance, *args, **kwargs):
-                if not instance.slides.load(step, depends_on):
-                    if depends_on is not None:
-                        raise Exception(
-                            f"Couldn't load from previous step: {step.value} depends on {depends_on}")
+                from storage.store import Loaded
+                match instance.slides.load(step, depends_on):
+                    case Loaded.none:
+                        if depends_on is not None:
+                            raise Exception(
+                                f"Couldn't load from previous step: {step.value} depends on {depends_on}")
+                    case Loaded.already_run:
+                        return
                 logging.info(f"Running step {step.value}")
                 ret = func(instance, *args, **kwargs)
                 instance.slides.save(step)
