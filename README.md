@@ -42,10 +42,10 @@ First, you should run `poetry install` in order to install all the
 dependencies. Keep in mind that as the project is updated you should run have
 to run it again.
 
-To run SL, first enter the `src/` directory, then run
+To run SL execute
 
 ```bash
-poetry run python main.py [lesson-id]
+poetry run python superlesson/main.py [lesson-id]
 ```
 
 ## Development
