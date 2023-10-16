@@ -9,6 +9,8 @@ authors = [
     "Ricardo Saraiva",
 ]
 readme = "README.md"
+license = "MIT"
+repository = "https://github.com/SuperLesson/SuperLesson"
 
 [tool.poetry.dependencies]
 python = "^3.9"
