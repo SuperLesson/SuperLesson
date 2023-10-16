@@ -16,7 +16,7 @@ ffmpeg-python = "^0.2.0"
 python-dotenv = "^1.0.0"
 python-mpv = "^1.0.4"
 pytest = "^7.4.2"
-hypothesis = "^6.87.1"
+hypothesis = "^6.88.1"
 tiktoken = "^0.5.1"
 
 
