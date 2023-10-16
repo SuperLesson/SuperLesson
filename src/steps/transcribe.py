@@ -1,14 +1,7 @@
-import difflib
 import logging
 import os
-import subprocess
 from datetime import datetime
-from time import sleep
 
-import openai
-import tiktoken
-from dotenv import load_dotenv
-from faster_whisper import WhisperModel
 from storage import LessonFile, Slide, Slides
 
 from .step import Step
@@ -20,12 +13,10 @@ class Transcribe:
     def __init__(self, slides: Slides, transcription_source: LessonFile):
         self._transcription_source = transcription_source
         self.slides = slides
-        load_dotenv()
-        openai.organization = os.getenv("OPENAI_ORG")
-        openai.api_key = os.getenv("OPENAI_TOKEN")
 
     @Step.step(Step.transcribe)
     def single_file(self):
+        from faster_whisper import WhisperModel
         bench_start = datetime.now()
 
         # TODO: add a flag to select the model size
@@ -88,6 +79,8 @@ class Transcribe:
 
     @Step.step(Step.improve_punctuation, Step.insert_tmarks)
     def improve_punctuation(self):
+        self._load_openai_key()
+
         context = """The following is a transcription of a lecture.
         The transcription is complete, but it has formatting and punctuation mistakes.
         Fix ONLY the formatting and punctuation mistakes. Do not change the content.
@@ -119,6 +112,15 @@ class Transcribe:
                 )
             slide.transcription = " ".join(gpt_chunks)
 
+    @staticmethod
+    def _load_openai_key():
+        from dotenv import load_dotenv
+        import openai
+
+        load_dotenv()
+        openai.organization = os.getenv("OPENAI_ORG")
+        openai.api_key = os.getenv("OPENAI_TOKEN")
+
     @classmethod
     def _improve_text_with_chatgpt(cls, text, sys_message, max_tokens):
         messages = [
@@ -142,12 +144,15 @@ class Transcribe:
             return improved_text
 
     def check_differences(self, replacement_path, improved_path):
-        # DIFF
+        import subprocess
+
         command = f"wdiff -n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m' \"{replacement_path}\" \"{improved_path}\"; bash"
         subprocess.Popen(["gnome-terminal", "--", "bash", "-c", command])
 
     @staticmethod
     def _count_tokens(text: str) -> int:
+        import tiktoken
+
         # Based on: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
         tokens_per_message = 4
         encoding = tiktoken.get_encoding("cl100k_base")
@@ -194,6 +199,8 @@ class Transcribe:
 
     @staticmethod
     def _ai(messages, temperature=0):
+        import openai
+
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             # model="gpt-4",
@@ -206,6 +213,8 @@ class Transcribe:
     # error handling is not correct
     @classmethod
     def _try_chat_completion_until_successful(cls, messages, max_tries=5):
+        from time import sleep
+
         for tries in range(max_tries):
             try:
                 logging.info("Asking GPT to improve punctuation")
@@ -220,6 +229,8 @@ class Transcribe:
     # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)
     @staticmethod
     def _calculate_difference(paragraph1, paragraph2):
+        import difflib
+
         words1 = paragraph1.split()
         words2 = paragraph2.split()
         similarity_ratio = difflib.SequenceMatcher(

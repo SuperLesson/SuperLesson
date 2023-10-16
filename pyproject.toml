@@ -2,23 +2,37 @@
 name = "SuperLesson"
 version = "0.1.0"
 description = "CLI to transcribe lectures"
-authors = ["Isabella Basso", "Felipe Kaneshiro", "Isaque Alves", "Ricardo Saraiva"]
+authors = [
+    "Isabella Basso",
+    "Felipe Kaneshiro",
+    "Isaque Alves",
+    "Ricardo Saraiva",
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pandas = "^2.1.0"
+
+[tool.poetry.group.transcribe.dependencies]
 faster-whisper = "^0.9.0"
-openai = "^0.28.1"
+
+[tool.poetry.group.tmarks.dependencies]
 pydub = "^0.25.1"
-pypdf = {extras = ["crypto"], version = "^3.16.2"}
-ffmpeg-python = "^0.2.0"
-python-dotenv = "^1.0.0"
+
+[tool.poetry.group.verify.dependencies]
 python-mpv = "^1.0.4"
-pytest = "^7.4.2"
-hypothesis = "^6.87.1"
+
+[tool.poetry.group.improve.dependencies]
+python-dotenv = "^1.0.0"
+openai = "^0.28.1"
 tiktoken = "^0.5.1"
 
+[tool.poetry.group.annotate.dependencies]
+pypdf = { extras = ["crypto"], version = "^3.16.2" }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+hypothesis = "^6.87.1"
 
 [build-system]
 requires = ["poetry-core"]
