@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime
 import time
 
@@ -22,17 +21,11 @@ class Transcribe:
 
         # TODO: add a flag to select the model size
         model_size = "large-v2"
-        # model_size = "small"
-        # Run on GPU with FP16
-        # model = WhisperModel(model_size, device="cuda", compute_type="float16")
-        # or run on GPU with INT8
-        model = WhisperModel(model_size, device="cuda",
-                             compute_type="int8_float16")
-        # or run on CPU with INT8
-        # model = WhisperModel(model_size, device="cpu", cpu_threads=16, compute_type="auto")
+        if self._has_nvidia_gpu():
+            model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+        else:
+            model = WhisperModel(model_size, device="cpu", compute_type="auto")
 
-        # informações sobre a função transcribe
-        # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
         segments, info = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
                                           language="pt", vad_filter=True)
 
@@ -46,6 +39,16 @@ class Transcribe:
 
         bench_duration = datetime.now() - bench_start
         logging.info(f"Transcription took {bench_duration}")
+
+    @staticmethod
+    def _has_nvidia_gpu():
+        from subprocess import check_output
+
+        try:
+            check_output('nvidia-smi')
+            return True
+        except Exception:
+            return False
 
     # taken from https://github.com/guillaumekln/faster-whisper/issues/80#issuecomment-1565032268
     def _run_with_pbar(self, segments, info):
@@ -164,10 +167,14 @@ class Transcribe:
                 )
             slide.transcription = " ".join(gpt_chunks)
 
+        bench_duration = datetime.now() - bench_start
+        logging.info(f"Transcription took {bench_duration}")
+
     @staticmethod
     def _load_openai_key():
         from dotenv import load_dotenv
         import openai
+        import os
 
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
