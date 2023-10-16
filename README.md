@@ -48,6 +48,24 @@ To run SL execute
 poetry run superlesson [lesson-id]
 ```
 
+This will execute all the following steps:
+
+1. `transcribe`
+2. Insert `tmarks`
+3. `verify` all transitions using MPV
+4. `replace` known bogus words
+5. `improve` punctuation using ChatGPT
+6. `annotate` the lecture notes
+
+You can also run individual steps using
+
+```bash
+poetry run [step]
+```
+
+> Note: step names are highlighted above using monospace.
+
+
 ## Development
 
 First, install `pre-commit`, then run `pre-commit install` to install all the

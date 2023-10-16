@@ -15,6 +15,12 @@ repository = "https://github.com/SuperLesson/SuperLesson"
 
 [tool.poetry.scripts]
 superlesson = "superlesson:main"
+transcribe = "superlesson:transcribe_step"
+tmarks = "superlesson:tmarks_step"
+verify = "superlesson:verify_step"
+replace = "superlesson:replace_step"
+improve = "superlesson:improve_step"
+annotate = "superlesson:annotate_step"
 
 [tool.poetry.dependencies]
 python = "^3.9"
