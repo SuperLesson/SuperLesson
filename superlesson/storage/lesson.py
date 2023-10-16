@@ -103,12 +103,12 @@ class LessonFiles:
     def transcription_source(self) -> LessonFile:
         """The file to be used for transcription."""
         if self._transcription_source is None:
-            transcription_file = self._find_lesson_file(
+            files = self._find_lesson_files(
                 [self._transcribe_with, FileType.video, FileType.audio])
-            if transcription_file is None:
+            if not files:
                 raise ValueError(
                     f"Transcription file not found on {self.lesson_root}")
-            self._transcription_source = transcription_file
+            self._transcription_source = files[0]
 
         logging.debug(f"Transcription source: {self._transcription_source}")
         return self._transcription_source
@@ -117,24 +117,24 @@ class LessonFiles:
     def lecture_notes(self) -> LessonFile:
         """The file to be used for annotation."""
         if self._lecture_notes is None:
-            notes_file = self._find_lesson_file(
+            files = self._find_lesson_files(
                 [self._annotate_with, FileType.notes, FileType.video])
-            if notes_file is None:
+            if not files:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
-            self._lecture_notes = notes_file
+            self._lecture_notes = files[0]
 
         logging.debug(f"Lecture notes: {self._lecture_notes}")
         return self._lecture_notes
 
-    def _find_lesson_file(self, accepted_types: List[Optional[FileType]]) -> Optional[LessonFile]:
+    def _find_lesson_files(self, accepted_types: List[Optional[FileType]]) -> List[LessonFile]:
         for file_type in accepted_types:
             if file_type is None:
                 continue
             files = self._get_files(file_type)
             if len(files) > 0:
-                return files[0]
+                return files
 
-        return None
+        return []
 
     def _get_files(self, file_type: FileType) -> List[LessonFile]:
         """Get all files of a given type."""
