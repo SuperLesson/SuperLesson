@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime
 
-from storage import LessonFile, Slide, Slides
+from superlesson.storage import LessonFile, Slide, Slides
 
 from .step import Step
 

@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import List
 
-from storage import LessonFile, Slides
+from superlesson.storage import LessonFile, Slides
 
 from .step import Step
 
