@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+import time
 
 from superlesson.storage import LessonFile, Slide, Slides
 
@@ -36,6 +37,8 @@ class Transcribe:
                                           language="pt", vad_filter=True)
 
         logging.info(f"Detected language {info.language} with probability {info.language_probability}")
+        self._run_with_pbar(segments, info)
+
         for segment in segments:
             self.slides.append(
                 Slide(segment.text, (segment.start, segment.end)))
@@ -43,6 +46,55 @@ class Transcribe:
 
         bench_duration = datetime.now() - bench_start
         logging.info(f"Transcription took {bench_duration}")
+
+    # taken from https://github.com/guillaumekln/faster-whisper/issues/80#issuecomment-1565032268
+    def _run_with_pbar(self, segments, info):
+        import io
+        from threading import Thread
+        from tqdm import tqdm
+
+        duration = round(info.duration)
+        bar_f = "{percentage:3.0f}% |  {remaining}  | {rate_noinv_fmt}"
+        print("  %  | remaining |  rate")
+
+        capture = io.StringIO()                # capture progress bars from tqdm
+
+        with tqdm(file=capture, total=duration, unit=" audio seconds", smoothing=0.00001, bar_format=bar_f) as pbar:
+            global timestamp_prev, timestamp_last
+            timestamp_prev = 0  # last timestamp in previous chunk
+            timestamp_last = 0  # current timestamp
+            last_burst = 0.0  # time of last iteration burst aka chunk
+            set_delay = 0.1  # max time it takes to iterate chunk & minimum time between chunks
+            jobs = []
+            for segment in segments:
+                logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                timestamp_last = round(segment.end)
+                time_now = time.time()
+                if time_now - last_burst > set_delay:  # catch new chunk
+                    last_burst = time_now
+                    job = Thread(target=self._pbar_delayed(set_delay, capture, pbar), daemon=False)
+                    jobs.append(job)
+                    job.start()
+
+            for job in jobs:
+                job.join()
+
+            if timestamp_last < duration: # silence at the end of the audio
+                pbar.update(duration - timestamp_last)
+                print('\33]0;'+ capture.getvalue().splitlines()[-1] +'\a', end='', flush=True)
+                print(capture.getvalue().splitlines()[-1])
+
+    @staticmethod
+    def _pbar_delayed(set_delay, capture, pbar):
+        """Gets last timestamp from chunk"""
+        def pbar_update():
+            global timestamp_prev
+            time.sleep(set_delay)  # wait for whole chunk to be iterated
+            pbar.update(timestamp_last - timestamp_prev)
+            print('\33]0;'+ capture.getvalue().splitlines()[-1] +'\a', end='', flush=True)
+            print(capture.getvalue().splitlines()[-1])
+            timestamp_prev = timestamp_last
+        return pbar_update
 
     @Step.step(Step.replace_words, Step.insert_tmarks)
     def replace_words(self):
@@ -213,8 +265,6 @@ class Transcribe:
     # error handling is not correct
     @classmethod
     def _try_chat_completion_until_successful(cls, messages, max_tries=5):
-        from time import sleep
-
         for tries in range(max_tries):
             try:
                 logging.info("Asking GPT to improve punctuation")
@@ -224,7 +274,7 @@ class Transcribe:
                 logging.info(f"Retrying {tries} out of {max_tries}")
                 logging.debug("Error:", e)
                 logging.debug("Message:", messages[1]["content"][:50])
-                sleep(20.5)
+                time.sleep(20.5)
 
     # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)
     @staticmethod
