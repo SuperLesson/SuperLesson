@@ -121,7 +121,14 @@ class LessonFiles:
                 [self._annotate_with, FileType.notes, FileType.video])
             if not files:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
-            self._lecture_notes = files[0]
+            for file in files:
+                if file.file_type == FileType.video:
+                    raise NotImplementedError("Annotating from video is not implemented yet")
+                if file.name.endswith(".pdf"):
+                    self._lecture_notes = file
+                    break
+            if self._lecture_notes is None:
+                raise ValueError(f"Notes file not found on {self.lesson_root}")
 
         logging.debug(f"Lecture notes: {self._lecture_notes}")
         return self._lecture_notes
