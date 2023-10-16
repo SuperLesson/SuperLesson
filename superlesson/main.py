@@ -6,7 +6,10 @@ from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
 
 
-def main(args: Namespace):
+def main():
+    args = parse_args()
+    set_log_level(args)
+
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
 
@@ -63,11 +66,8 @@ def parse_args() -> Namespace:
                            help="Print debug information")
     return parser.parse_args()
 
-
-if __name__ == "__main__":
-    args = parse_args()
+def set_log_level(args: Namespace):
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
     elif args.verbose:
         logging.basicConfig(level=logging.INFO)
-    main(args)
