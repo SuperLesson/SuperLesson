@@ -1,5 +1,6 @@
 import logging
 from argparse import ArgumentParser, Namespace
+from typing import Any, Tuple
 
 from .steps import Annotate, Transcribe, Transitions
 from .storage import LessonFiles, Slides
@@ -71,3 +72,47 @@ def set_log_level(args: Namespace):
         logging.basicConfig(level=logging.DEBUG)
     elif args.verbose:
         logging.basicConfig(level=logging.INFO)
+
+def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:
+    args = parse_args()
+    set_log_level(args)
+
+    lesson_files = LessonFiles(
+        args.lesson, args.transcribe_with, args.annotate_with)
+
+    slides = Slides(lesson_files.lesson_root, args.run_all)
+    if _class is Annotate:
+        instance = _class(slides, lesson_files.lecture_notes)
+    else:
+        instance = _class(slides, lesson_files.transcription_source)
+    return args, instance
+
+
+def transcribe_step():
+    _, transcribe = single_step_setup(Transcribe)
+    transcribe.single_file()
+
+
+def tmarks_step():
+    _, transitions = single_step_setup(Transitions)
+    transitions.insert_tmarks()
+
+
+def verify_step():
+    _, transitions = single_step_setup(Transitions)
+    transitions.verify_tbreaks_with_mpv()
+
+
+def replace_step():
+    _, transcribe = single_step_setup(Transcribe)
+    transcribe.replace_words()
+
+
+def improve_step():
+    _, transcribe = single_step_setup(Transcribe)
+    transcribe.improve_punctuation()
+
+
+def annotate_step():
+    _, annotate = single_step_setup(Annotate)
+    annotate.to_pdf()
