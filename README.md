@@ -45,7 +45,7 @@ to run it again.
 To run SL execute
 
 ```bash
-poetry run python superlesson/main.py [lesson-id]
+poetry run superlesson [lesson-id]
 ```
 
 ## Development
