@@ -17,6 +17,8 @@ class Transcribe:
     @Step.step(Step.transcribe)
     def single_file(self):
         from faster_whisper import WhisperModel
+        from os import cpu_count
+
         bench_start = datetime.now()
 
         # TODO: add a flag to select the model size
@@ -24,7 +26,7 @@ class Transcribe:
         if self._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
-            model = WhisperModel(model_size, device="cpu", compute_type="auto")
+            model = WhisperModel(model_size, device="cpu", cpu_threads=cpu_count(), compute_type="auto")
 
         segments, info = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
                                           language="pt", vad_filter=True)
