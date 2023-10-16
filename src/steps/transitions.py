@@ -1,13 +1,8 @@
 import datetime
 import logging
-import re
-import subprocess
-import time
 from pathlib import Path
 from typing import List
 
-import mpv
-from pydub import AudioSegment, silence
 from storage import LessonFile, Slides
 
 from .step import Step
@@ -66,6 +61,8 @@ class Transitions:
         return png_paths
 
     def _get_relative_times(self, png_names: List[str]) -> List[datetime.timedelta]:
+        import re
+
         def to_timedelta(h, m, s): return datetime.timedelta(
             hours=int(h), minutes=int(m), seconds=int(s))
 
@@ -86,6 +83,8 @@ class Transitions:
     # with the code bellow I have to make guesses of threshold_factor
     @staticmethod
     def _detect_silence(audio_file, silence_threshold_factor=10):
+        from pydub import AudioSegment, silence
+
         audio = AudioSegment.from_wav(audio_file)
         silence_thresh = audio.dBFS - silence_threshold_factor
         silences = silence.detect_silence(
@@ -107,17 +106,22 @@ class Transitions:
         self._play_video_at_times(relative_times, play_duration)
 
     def _play_video_at_times(self, times, duration):
+        import mpv
+        from time import sleep
+
         player = mpv.MPV()
         player.play(str(self._transcription_source.full_path))
         player.wait_until_playing()
         for _time in times:
             logging.debug(f"Playing video at time {_time}")
             player.seek(_time, reference="absolute", precision="exact")
-            time.sleep(duration)
+            sleep(duration)
 
     # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
     @staticmethod
     def _extract_audio(input_file, output_file, audio_codec="pcm_s16le", channels=1, sample_rate=16000):
+        import subprocess
+
         command = f"ffmpeg -loglevel quiet -i {input_file} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output_file}"
         subprocess.call(command, shell=True, stdout=subprocess.DEVNULL)
 
