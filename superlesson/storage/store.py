@@ -40,6 +40,10 @@ class Store:
         self._storage_root = lesson_root / ".data"
         self._run_all = run_all
 
+    @classmethod
+    def txt_files(cls) -> List[str]:
+        return [f"{file.name}.txt" for file in cls._storage_map.values()]
+
     def in_storage(self, step: Step) -> bool:
         return self._storage_map.get(step) is not None
 

@@ -6,6 +6,8 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
+from .store import Store
+
 
 class FileType(Enum):
     video = "video"
@@ -88,10 +90,14 @@ class LessonFiles:
             return self._files
 
         logging.info("Searching for files...")
+        ignored = list(Store.txt_files())
+        ignored.append("transcription.pdf")
         for file in self.lesson_root.iterdir():
+            if file.name in ignored:
+                continue
             try:
-                logging.debug(f"Found file: {file}")
                 self._files.append(LessonFile(file.name, self.lesson_root))
+                logging.debug(f"Found file: {file}")
             except ValueError:
                 pass
 
