@@ -6,7 +6,7 @@ from pathlib import Path
 from textwrap import dedent, fill
 from typing import List, Optional, Tuple
 
-from steps.step import Step
+from superlesson.steps.step import Step
 
 from .store import Loaded, Store
 

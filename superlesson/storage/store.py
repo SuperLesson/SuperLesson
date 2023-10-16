@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
-from steps.step import Step
+from superlesson.steps.step import Step
 
 
 class Format(Enum):

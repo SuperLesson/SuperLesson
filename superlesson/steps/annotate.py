@@ -1,7 +1,8 @@
 import logging
 
 import pypdf
-from storage import LessonFile, Slides
+
+from superlesson.storage import LessonFile, Slides
 
 from .step import Step
 

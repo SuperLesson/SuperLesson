@@ -1,9 +1,9 @@
 import logging
 from argparse import ArgumentParser, Namespace
 
-from steps import Annotate, Transcribe, Transitions
-from storage import LessonFiles, Slides
-from storage.lesson import FileType
+from .steps import Annotate, Transcribe, Transitions
+from .storage import LessonFiles, Slides
+from .storage.lesson import FileType
 
 
 def main(args: Namespace):
