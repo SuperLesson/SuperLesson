@@ -58,6 +58,14 @@ def parse_args() -> Namespace:
     parser.add_argument("--run-all",
                         action="store_true",
                         help="Run all steps")
+    parser.add_argument("--model-size",  # model only works with pt now
+                        choices=["tiny",  # "tiny.en",
+                                 "base",  # "base.en",
+                                 "small",  # "small.en",
+                                 "medium",  # "medium.en",
+                                 "large-v1", "large-v2", "large"],
+                        default="large-v2",
+                        help="Choose whisper model size")
     mut_group = parser.add_mutually_exclusive_group()
     mut_group.add_argument("--verbose", "-v",
                            action="store_true",

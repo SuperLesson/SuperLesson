@@ -15,14 +15,12 @@ class Transcribe:
         self.slides = slides
 
     @Step.step(Step.transcribe)
-    def single_file(self):
+    def single_file(self, model_size: str):
         from faster_whisper import WhisperModel
         from os import cpu_count
 
         bench_start = datetime.now()
 
-        # TODO: add a flag to select the model size
-        model_size = "large-v2"
         if self._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:

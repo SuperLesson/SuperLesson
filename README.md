@@ -48,6 +48,8 @@ To run SL execute
 poetry run superlesson [lesson-id]
 ```
 
+> Note: you can see the options available by running `poetry run superlesson --help`
+
 This will execute all the following steps:
 
 1. `transcribe`
@@ -64,7 +66,6 @@ poetry run [step]
 ```
 
 > Note: step names are highlighted above using monospace.
-
 
 ## Development
 
