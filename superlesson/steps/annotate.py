@@ -1,6 +1,9 @@
 import logging
+import os
+import tempfile
 
 import pypdf
+import typst
 
 from superlesson.storage import LessonFile, Slides
 
@@ -16,58 +19,64 @@ class Annotate:
 
     @Step.step(Step.annotate, Step.insert_tmarks)
     def to_pdf(self):
-        N = len(pypdf.PdfReader(self._lecture_notes.full_path).pages)
-        blank_transcription = [""] * N
+        with open(self._lecture_notes.full_path, "rb") as a:
+            pdf = pypdf.PdfReader(a)
+            w = (
+                pdf.pages[0].mediabox.width / 72
+            )  # dividing by 72 to do pt to inch conversion
+            logging.debug(f"Slide width: {w}")
+            output = self._transcription_to_pdf(w)
+            with open(output, "rb") as t:
+                trans = pypdf.PdfReader(t)
+                merger = pypdf.PdfWriter()
+                for i in range(len(pdf.pages)):
+                    merger.append(fileobj=pdf, pages=(i, i + 1))
+                    if i < len(trans.pages):
+                        merger.append(fileobj=trans, pages=(i, i + 1))
 
-        self._add_notes_to_pdf(blank_transcription)
+        with open(output, "wb") as f:
+            merger.write(f)
+        logging.info(f"Annotated PDF saved as {output}")
 
-    def _add_notes_to_pdf(self, note_texts):
-        lesson_notes = self._lecture_notes.full_path
-        input_pdf = pypdf.PdfReader(lesson_notes)
-        if input_pdf.is_encrypted:
-            # If there's a password, replace the empty string with the password
-            input_pdf.decrypt("")
-        output_pdf = pypdf.PdfWriter()
+    def _transcription_to_pdf(self, w) -> str:
+        preamble = f"""
+#set page(
+    width: {w}in,
+    height: auto,
+    margin: (
+        top: 2in,
+        bottom: 2in,
+        left: 1in,
+        right: 1in,
+    ),
+    fill: rgb("#fbfafa")
+)
 
-        for index in range(len(input_pdf.pages)):
-            page = input_pdf.pages[index]
+#set text(
+    size: 18pt,
+    hyphenate: false,
+    font: (
+        "Arial",
+    )
+)
 
-            # Check if there"s a note for this page
-            if index < len(note_texts):
-                # Get the page size
-                page_width, page_height = page.mediabox.upper_right
+#set par(
+    justify: true,
+    leading: 1em,
+    first-line-indent: 0pt,
+    linebreaks: "optimized",
+)
 
-                # Calculate the x and y coordinates for the top right corner
-                x = page_width - 50  # Subtract 50 to account for the width of the note
-                y = page_height - 35  # 30 muito pouco, 40 muito
-                # iterei por algum tempo nos valores de x e y, esses foram os melhores pois:
-                # se encaixam em slides muito cheios e atendem também ao mobile
-
-                # Create a new note annotation
-                note = pypdf.generic.DictionaryObject({
-                    pypdf.generic.NameObject("/Type"): pypdf.generic.NameObject("/Annot"),
-                    pypdf.generic.NameObject("/Subtype"): pypdf.generic.NameObject("/Text"),
-                    pypdf.generic.NameObject("/Rect"): pypdf.generic.ArrayObject([
-                        pypdf.generic.NumberObject(x),
-                        pypdf.generic.NumberObject(y),
-                        pypdf.generic.NumberObject(x + 30),
-                        pypdf.generic.NumberObject(y + 30),
-                    ]),
-                    pypdf.generic.NameObject("/Contents"): pypdf.generic.create_string_object(note_texts[index]),
-                    pypdf.generic.NameObject("/Open"): pypdf.generic.BooleanObject(True),
-                    pypdf.generic.NameObject("/Name"): pypdf.generic.NameObject("/Comment"),
-                })
-
-                # Add the note annotation to the page
-                if "/Annots" not in page:
-                    page[pypdf.generic.NameObject(
-                        "/Annots")] = pypdf.generic.ArrayObject()
-
-                page["/Annots"].append(note)
-
-            output_pdf.add_page(page)
-
-        output_path = self._lecture_notes.path / "transcription.pdf"
-        logging.info(f"Saving annotated pdf to {output_path}")
-        with open(output_path, "wb") as f:
-             output_pdf.write(f)
+"""
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(preamble.encode("utf-8"))
+            f.write(
+                "\n#pagebreak()\n".join(
+                    [slide.transcription for slide in self.slides]
+                ).encode("utf-8")
+            )
+            temp_file_name = f.name
+            logging.debug(f"Typst temp file saved as {temp_file_name}")
+        output = os.path.join(self._lecture_notes.path, "annotations.pdf")
+        typst.compile(temp_file_name, output=output)
+        return output
