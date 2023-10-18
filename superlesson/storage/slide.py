@@ -28,7 +28,7 @@ class TimeFrame:
 
     @staticmethod
     def _repr_time(time: timedelta) -> str:
-        return str(time)[:-4]
+        return str(time).split(".")[0]
 
     def __repr__(self):
         return f"{self._repr_time(self.start)} - {self._repr_time(self.end)}"
