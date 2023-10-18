@@ -13,6 +13,10 @@ from .store import Loaded, Store
 
 @dataclass
 class TimeFrame:
+    """
+    Class which holds the start and end of a specific frame of time.
+    """
+
     start: timedelta
     end: timedelta
 
@@ -21,6 +25,10 @@ class TimeFrame:
         self.end = timedelta(seconds=end)
 
     def to_dict(self):
+        """
+        Transforms a timeframe into a dict with two fields,
+        the 'start' and the 'end' in seconds.
+        """
         return {
             "start": self.start.total_seconds(),
             "end": self.end.total_seconds(),
@@ -36,6 +44,11 @@ class TimeFrame:
 
 @dataclass
 class Slide:
+    """
+    Class representing a slide of a pdf. Holds the its corresponding transcription,
+    timeframe in the video, and optionally the path of its pngs and its
+    identification number within the pdf.
+    """
     transcription: str
     timeframe: TimeFrame
     png_path: Optional[Path] = None
@@ -59,6 +72,9 @@ class Slide:
 
 
 class Slides(UserList):
+    """
+    Holds and manipulates a list of Slide instances.
+    """
     def __init__(self, lesson_root: Path, run_all: bool):
         super().__init__()
         self.lesson_root = lesson_root
@@ -79,6 +95,10 @@ class Slides(UserList):
         return slide
 
     def merge(self, end: Optional[float] = None):
+        """
+        Merges all slides until specified 'end' or the last.
+        Will throw an exception if there are no slides.
+        """
         if len(self.data) == 0:
             raise ValueError("No slides to merge")
 
@@ -103,32 +123,46 @@ class Slides(UserList):
             end = self.data[last].timeframe.end.total_seconds()
 
         if first == last:
-            logging.debug(dedent(f"""
+            logging.debug(
+                dedent(
+                    f"""
                 Can't merge slide {first} with itself:
                     First matched: {self.data[first].timeframe}
                     Last matched: {self.data[last].timeframe}
-                """))
+                """
+                )
+            )
             return
 
         logging.info(f"Merging slides {first} until {last}")
-        logging.debug(dedent(f"""
+        logging.debug(
+            dedent(
+                f"""
                 First matched: {self.data[first].timeframe}
                 Last matched: {self.data[last].timeframe}
-            """))
+            """
+            )
+        )
 
-        transcription = "\n".join([
-            slide.transcription for slide in self.data[first:last + 1]
-        ])
+        transcription = "\n".join(
+            [slide.transcription for slide in self.data[first : last + 1]]
+        )
         assert end is not None
         start = self.data[first - 1].timeframe.end.total_seconds()
         new_slide = Slide(transcription, (start, end))
         new_slide.merged = True
-        self.data = self.data[:first] + [new_slide] + self.data[last + 1:]
+        self.data = self.data[:first] + [new_slide] + self.data[last + 1 :]
 
     def has_data(self) -> bool:
+        """
+        Checks whether the slide list is empty or not.
+        """
         return len(self.data) != 0
 
     def load(self, step: Step, depends_on: Step) -> Loaded:
+        """
+        Loads slide data for a specific step from a json.
+        """
         if self._last_state is not Loaded.already_run and self.has_data():
             logging.debug("Data already loaded")
             return Loaded.in_memory
@@ -144,10 +178,11 @@ class Slides(UserList):
         return loaded
 
     def save(self, step: Step):
+        """
+        Saves all slide data for a step to a json and txt.
+        """
         if self._store.in_storage(step):
-            self._store.save_json(step, [
-                slide.to_dict() for slide in self.data
-            ])
-            self._store.save_txt(step, "\n".join([
-                str(slide) + '\n' for slide in self.data
-            ]))
+            self._store.save_json(step, [slide.to_dict() for slide in self.data])
+            self._store.save_txt(
+                step, "\n".join([str(slide) + "\n" for slide in self.data])
+            )

@@ -28,6 +28,10 @@ class File:
 
 
 class Store:
+    """
+    The `Store` class handles data storage for each step in the lecture preparation process.
+    """
+
     _storage_map = {
         Step.transcribe: File("transcription", [Format.json]),
         Step.insert_tmarks: File("marked", [Format.json]),
@@ -36,14 +40,20 @@ class Store:
     }
 
     def __init__(self, lesson_root: Path, run_all: bool):
+        """Initialize the Store instance."""
         self._lesson_root = lesson_root
         self._storage_root = lesson_root / ".data"
         self._run_all = run_all
 
     def in_storage(self, step: Step) -> bool:
+        """
+        This method checks whether data for a particular step should be
+        stored based on step definitions.
+        """
         return self._storage_map.get(step) is not None
 
     def _get_storage_path(self, step: Step, format: Format) -> Optional[Path]:
+        """Get the storage path for a specific step and file format."""
         file = self._storage_map[step]
         if format not in file.formats:
             return None
@@ -57,7 +67,7 @@ class Store:
         txt_path = self._get_storage_path(step, Format.txt)
         transcriptions = None
         if txt_path is not None and txt_path.exists():
-            with open(str(txt_path), "r") as f:
+            with open(str(txt_path)) as f:
                 transcriptions = re.split("====== SLIDE .* ======", f.read())[1:]
 
             if len(transcriptions) == 0:
@@ -67,13 +77,14 @@ class Store:
         assert json_path is not None, f"{step.value} doesn't define a json file"
         data = None
         if json_path.exists():
-            with open(str(json_path), "r") as f:
+            with open(str(json_path)) as f:
                 try:
                     data = json_lib.load(f)
                 except json_lib.decoder.JSONDecodeError:
                     logging.error(
-                        f"Failed to load {step.value} from json. Try running the step again.")
-                    
+                        f"Failed to load {step.value} from json. Try running the step again."
+                    )
+
         if transcriptions is not None and data is not None:
             for i in range(len(data)):
                 data[i]["transcription"] = transcriptions[i].strip()
@@ -81,22 +92,36 @@ class Store:
         return data
 
     def load(self, step: Step, depends_on: Step) -> Tuple[Loaded, Optional[Any]]:
+        """
+        Load data for a specific step.
+        This method loads data for a specific step while considering the step's dependencies. It checks if the step has
+        already been run, and if not, it loads data for the specified dependency.
+        """
         if not self._run_all and self.in_storage(step):
             data = self._load(step)
             if data is not None:
-                if input(f"{step.value} has already been run. Run again? (y/N) ").lower() != "y":
+                if (
+                    input(
+                        f"{step.value} has already been run. Run again? (y/N) "
+                    ).lower()
+                    != "y"
+                ):
                     return (Loaded.already_run, data)
 
         for s in Step.get_last(step):
             if s < depends_on:
                 raise Exception(
-                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet.")
+                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet."
+                )
             if self.in_storage(s):
                 return (Loaded.new, self._load(s))
 
         return (Loaded.none, None)
 
     def save_json(self, step: Step, data: Any):
+        """
+        Save data for a specific step in JSON format.
+        """
         path = self._get_storage_path(step, Format.json)
         if path is not None:
             logging.info(f"Saving {step.value} as json")
@@ -105,6 +130,9 @@ class Store:
                 json_lib.dump(data, f)
 
     def save_txt(self, step: Step, data: Any):
+        """
+        Save data for a specific step in text format.
+        """
         path = self._get_storage_path(step, Format.txt)
         if path is not None:
             logging.info(f"Saving {step.value} as txt")
