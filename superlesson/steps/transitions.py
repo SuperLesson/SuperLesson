@@ -9,12 +9,21 @@ from .step import Step
 
 
 class Transitions:
+    """
+    Class 'Transitions' holds all methods related to the insertion of
+    tmarks. These are timestamps which indicate slide transitions
+    and separate transcriptions according to slide.
+    """
     def __init__(self, slides: Slides, transcription_source: LessonFile):
         self._transcription_source = transcription_source
         self.slides = slides
 
     @Step.step(Step.insert_tmarks, Step.transcribe)
     def insert_tmarks(self):
+        """
+        Initiates process of tmark insertion in a transcription
+        given a video/audio and the corresponding PNGs with slide transitions.
+        """
         # TODO: use audio as source for transcription
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
@@ -95,6 +104,10 @@ class Transitions:
 
     @Step.step(Step.verify_tbreaks_with_mpv, Step.insert_tmarks)
     def verify_tbreaks_with_mpv(self):
+        """
+        Initiates the process of opening an mpv instance at the times indicated by tmarks.
+        This allows the user to verify whether the tmarks adequately represent slide transitions.
+        """
         # TODO: parameterize time translation
         time_translation = 6
         relative_times = list(filter(lambda x: x < 0, [
@@ -106,8 +119,9 @@ class Transitions:
         self._play_video_at_times(relative_times, play_duration)
 
     def _play_video_at_times(self, times, duration):
-        import mpv
         from time import sleep
+
+        import mpv
 
         player = mpv.MPV()
         player.play(str(self._transcription_source.full_path))

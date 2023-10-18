@@ -15,7 +15,11 @@ class FileType(Enum):
 
 @dataclass
 class LessonFile:
-    """Class to represent a lesson file."""
+    """
+    Class to represent a lesson file.
+    The `LessonFile` class is designed to encapsulate information about a lesson file, such as its name, path, and
+    associated file type.
+    """
 
     name: str
     path: Path
@@ -28,6 +32,11 @@ class LessonFile:
 
     @property
     def full_path(self) -> Path:
+        """
+        Get the full path to the lesson file.
+        This property combines the file's path and name to provide the complete
+        path to the lesson file.
+        """
         return self.path / self.name
 
     @staticmethod
@@ -54,7 +63,9 @@ class LessonFile:
 
 
 class LessonFiles:
-    """Class to find all files for a given lesson id."""
+    """
+    Class to find all files for a given lesson id.
+    """
 
     lesson_root: Path
 
@@ -83,7 +94,11 @@ class LessonFiles:
 
     @property
     def files(self) -> List[LessonFile]:
-        """All usable files in lesson folder."""
+        """
+        All usable files in lesson folder.
+        This property scans the lesson folder and collects information about all
+        usable files.
+        """
         if len(self._files) > 0:
             return self._files
 
@@ -101,7 +116,10 @@ class LessonFiles:
 
     @property
     def transcription_source(self) -> LessonFile:
-        """The file to be used for transcription."""
+        """
+        The file to be used for transcription.
+        If the transcription file is not found, a ValueError is raised.
+        """
         if self._transcription_source is None:
             transcription_file = self._find_lesson_file(
                 [self._transcribe_with, FileType.video, FileType.audio])
@@ -115,7 +133,10 @@ class LessonFiles:
 
     @property
     def lecture_notes(self) -> LessonFile:
-        """The file to be used for annotation."""
+        """
+        The file to be used for annotation.
+        If the annotation file is not found, a ValueError is raised.
+        """
         if self._lecture_notes is None:
             notes_file = self._find_lesson_file(
                 [self._annotate_with, FileType.notes, FileType.video])

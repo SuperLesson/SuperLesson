@@ -8,7 +8,11 @@ from .step import Step
 
 
 class Transcribe:
-    """Class to transcribe a lesson."""
+    """
+    The `Transcribe` class handles the transcription of lecture materials.
+    It offers methods to transcribe the content, replace specific words or
+    phrases, and improve punctuation, making the transcription more accurate and readable.
+    """
 
     def __init__(self, slides: Slides, transcription_source: LessonFile):
         self._transcription_source = transcription_source
@@ -16,7 +20,13 @@ class Transcribe:
 
     @Step.step(Step.transcribe)
     def single_file(self):
+        """
+        Transcribe the lecture content using the Whisper ASR model to
+        transcribe the content from the source file and save it as .txt and .json
+        for further processing.
+        """
         from faster_whisper import WhisperModel
+
         bench_start = datetime.now()
 
         # TODO: add a flag to select the model size
@@ -25,36 +35,49 @@ class Transcribe:
         # Run on GPU with FP16
         # model = WhisperModel(model_size, device="cuda", compute_type="float16")
         # or run on GPU with INT8
-        model = WhisperModel(model_size, device="cuda",
-                             compute_type="int8_float16")
+        model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         # or run on CPU with INT8
         # model = WhisperModel(model_size, device="cpu", cpu_threads=16, compute_type="auto")
 
         # informações sobre a função transcribe
         # https://github.com/guillaumekln/faster-whisper/blob/master/faster_whisper/transcribe.py
-        segments, info = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
-                                          language="pt", vad_filter=True)
+        segments, info = model.transcribe(
+            str(self._transcription_source.full_path),
+            beam_size=5,
+            language="pt",
+            vad_filter=True,
+        )
 
-        logging.info(f"Detected language {info.language} with probability {info.language_probability}")
+        logging.info(
+            f"Detected language {info.language} with probability {info.language_probability}"
+        )
         for segment in segments:
-            self.slides.append(
-                Slide(segment.text, (segment.start, segment.end)))
-            logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+            self.slides.append(Slide(segment.text, (segment.start, segment.end)))
+            logging.info(
+                "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+            )
 
         bench_duration = datetime.now() - bench_start
         logging.info(f"Transcription took {bench_duration}")
 
     @Step.step(Step.replace_words, Step.insert_tmarks)
     def replace_words(self):
+        """
+        This method reads replacement data from a file and performs word
+        replacement in the transcribed content. It enables the enhancement of
+        specific terms or phrases in the transcription.
+        """
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
-            logging.warning(f"{data_folder} doesn't exist, so no replacements will be done")
+            logging.warning(
+                f"{data_folder} doesn't exist, so no replacements will be done"
+            )
             return
 
         # TODO: make this portable
         # INPUT DATA FOR SUBSTITUTION
         input_path = data_folder / "resp.txt"
-        with open(input_path, "r") as file:
+        with open(input_path) as file:
             prompt_words = {}
             for line in file:
                 parts = line.split("->")  # Split each line on the "->"
@@ -79,6 +102,12 @@ class Transcribe:
 
     @Step.step(Step.improve_punctuation, Step.insert_tmarks)
     def improve_punctuation(self):
+        """
+        This method enhances the punctuation and formatting of the transcribed content.
+        It uses the ChatGPT-3.5-turbo model from OpenAI to improve the text's readability.
+        Will raise an exception if can not connect with ChatGPT API.
+
+        """
         self._load_openai_key()
 
         context = """The following is a transcription of a lecture.
@@ -99,23 +128,29 @@ class Transcribe:
             text = slide.transcription
             total_tokens = self._count_tokens(text)
             if total_tokens <= max_input_tokens:
-                slide.transcription = self._improve_text_with_chatgpt(text, sys_message, max_input_tokens)
+                slide.transcription = self._improve_text_with_chatgpt(
+                    text, sys_message, max_input_tokens
+                )
                 continue
 
-            logging.info("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
+            logging.info(
+                "The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt."
+            )
             logging.debug(text[:50])
 
             gpt_chunks = []
             for chunk in self._split_text(text, max_input_tokens):
                 gpt_chunks.append(
-                    self._improve_text_with_chatgpt(chunk, sys_message, max_input_tokens)
+                    self._improve_text_with_chatgpt(
+                        chunk, sys_message, max_input_tokens
+                    )
                 )
             slide.transcription = " ".join(gpt_chunks)
 
     @staticmethod
     def _load_openai_key():
-        from dotenv import load_dotenv
         import openai
+        from dotenv import load_dotenv
 
         load_dotenv()
         openai.organization = os.getenv("OPENAI_ORG")
@@ -144,6 +179,7 @@ class Transcribe:
             return improved_text
 
     def check_differences(self, replacement_path, improved_path):
+        """Compare differences between two text files."""
         import subprocess
 
         command = f"wdiff -n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m' \"{replacement_path}\" \"{improved_path}\"; bash"
@@ -160,7 +196,7 @@ class Transcribe:
 
     @classmethod
     def _split_text(cls, text, max_tokens):
-        periods = text.split('.')
+        periods = text.split(".")
         if len(periods) > 1:
             chunks = []
             total_tokens = 0
@@ -169,12 +205,12 @@ class Transcribe:
                 tokens = cls._count_tokens(periods[i])
                 if tokens > max_tokens:
                     if start != i:
-                        chunks.append('. '.join(periods[start:i]))
+                        chunks.append(". ".join(periods[start:i]))
                     chunks.extend(cls._split_text(periods[i], max_tokens))
                     start = i + 1
                     total_tokens = 0
                 elif total_tokens + tokens > max_tokens:
-                    chunks.append('. '.join(periods[start:i]))
+                    chunks.append(". ".join(periods[start:i]))
                     start = i
                     total_tokens = tokens
                 else:
@@ -189,7 +225,7 @@ class Transcribe:
         for i in range(len(words)):
             tokens = cls._count_tokens(words[i])
             if total_tokens + tokens > max_tokens:
-                chunks.append(' '.join(words[start:i]))
+                chunks.append(" ".join(words[start:i]))
                 start = i
                 total_tokens = tokens
             else:
@@ -206,7 +242,7 @@ class Transcribe:
             # model="gpt-4",
             messages=messages,
             n=1,
-            temperature=temperature
+            temperature=temperature,
         )
         return response
 
@@ -219,7 +255,7 @@ class Transcribe:
             try:
                 logging.info("Asking GPT to improve punctuation")
                 result = cls._ai(messages, 0.1)
-                return result['choices'][0]['message']['content']
+                return result["choices"][0]["message"]["content"]
             except Exception as e:
                 logging.info(f"Retrying {tries} out of {max_tries}")
                 logging.debug("Error:", e)
@@ -233,6 +269,5 @@ class Transcribe:
 
         words1 = paragraph1.split()
         words2 = paragraph2.split()
-        similarity_ratio = difflib.SequenceMatcher(
-            None, words1, words2).ratio()
+        similarity_ratio = difflib.SequenceMatcher(None, words1, words2).ratio()
         return similarity_ratio

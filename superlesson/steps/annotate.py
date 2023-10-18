@@ -8,11 +8,19 @@ from .step import Step
 
 
 class Annotate:
-    """Class to annotate a lesson."""
+    """The `Annotate` class annotates lecture materials in PDF format.
+    This class adds notes or comments to specific pages of the lecture notes PDF.
+    """
 
     def __init__(self, slides: Slides, lecture_notes: LessonFile):
         self._lecture_notes = lecture_notes
         self.slides = slides
+
+    """The `to_pdf` method processes the lecture notes,
+    adding notes to the corresponding pages.
+    Once annotated, the updated PDF is saved as 'transcription.pdf' in the same
+    directory as the original lecture notes.
+    """
 
     @Step.step(Step.annotate, Step.insert_tmarks)
     def to_pdf(self):
@@ -44,24 +52,39 @@ class Annotate:
                 # se encaixam em slides muito cheios e atendem também ao mobile
 
                 # Create a new note annotation
-                note = pypdf.generic.DictionaryObject({
-                    pypdf.generic.NameObject("/Type"): pypdf.generic.NameObject("/Annot"),
-                    pypdf.generic.NameObject("/Subtype"): pypdf.generic.NameObject("/Text"),
-                    pypdf.generic.NameObject("/Rect"): pypdf.generic.ArrayObject([
-                        pypdf.generic.NumberObject(x),
-                        pypdf.generic.NumberObject(y),
-                        pypdf.generic.NumberObject(x + 30),
-                        pypdf.generic.NumberObject(y + 30),
-                    ]),
-                    pypdf.generic.NameObject("/Contents"): pypdf.generic.create_string_object(note_texts[index]),
-                    pypdf.generic.NameObject("/Open"): pypdf.generic.BooleanObject(True),
-                    pypdf.generic.NameObject("/Name"): pypdf.generic.NameObject("/Comment"),
-                })
+                note = pypdf.generic.DictionaryObject(
+                    {
+                        pypdf.generic.NameObject("/Type"): pypdf.generic.NameObject(
+                            "/Annot"
+                        ),
+                        pypdf.generic.NameObject("/Subtype"): pypdf.generic.NameObject(
+                            "/Text"
+                        ),
+                        pypdf.generic.NameObject("/Rect"): pypdf.generic.ArrayObject(
+                            [
+                                pypdf.generic.NumberObject(x),
+                                pypdf.generic.NumberObject(y),
+                                pypdf.generic.NumberObject(x + 30),
+                                pypdf.generic.NumberObject(y + 30),
+                            ]
+                        ),
+                        pypdf.generic.NameObject(
+                            "/Contents"
+                        ): pypdf.generic.create_string_object(note_texts[index]),
+                        pypdf.generic.NameObject("/Open"): pypdf.generic.BooleanObject(
+                            True
+                        ),
+                        pypdf.generic.NameObject("/Name"): pypdf.generic.NameObject(
+                            "/Comment"
+                        ),
+                    }
+                )
 
                 # Add the note annotation to the page
                 if "/Annots" not in page:
-                    page[pypdf.generic.NameObject(
-                        "/Annots")] = pypdf.generic.ArrayObject()
+                    page[
+                        pypdf.generic.NameObject("/Annots")
+                    ] = pypdf.generic.ArrayObject()
 
                 page["/Annots"].append(note)
 
@@ -70,4 +93,4 @@ class Annotate:
         output_path = self._lecture_notes.path / "transcription.pdf"
         logging.info(f"Saving annotated pdf to {output_path}")
         with open(output_path, "wb") as f:
-             output_pdf.write(f)
+            output_pdf.write(f)
