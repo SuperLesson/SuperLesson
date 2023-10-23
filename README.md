@@ -67,6 +67,10 @@ poetry run [step]
 
 > Note: step names are highlighted above using monospace.
 
+#### CUDA Support
+
+The transcription step can be run within a docker environment with CUDA by passing the `--with-docker` flag.
+
 ## Development
 
 First, install `pre-commit`, then run `pre-commit install` to install all the

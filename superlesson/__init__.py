@@ -1,4 +1,6 @@
+import sys
 import logging
+import subprocess
 from argparse import ArgumentParser, Namespace
 from typing import Any, Tuple
 
@@ -16,7 +18,10 @@ def main():
 
     slides = Slides(lesson_files.lesson_root, args.run_all)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
-    transcribe.single_file(args.model_size)
+    if args.with_docker:
+        run_docker()
+    else:
+        transcribe.single_file(args.model_size)
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
@@ -66,6 +71,9 @@ def parse_args() -> Namespace:
                                  "large-v1", "large-v2", "large"],
                         default="large-v2",
                         help="Choose whisper model size")
+    parser.add_argument("--with-docker",
+                        action="store_true",
+                        help="Run transcription step using the docker environment")
     mut_group = parser.add_mutually_exclusive_group()
     mut_group.add_argument("--verbose", "-v",
                            action="store_true",
@@ -98,7 +106,29 @@ def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:
 
 def transcribe_step():
     args, transcribe = single_step_setup(Transcribe)
-    transcribe.single_file(args.model_size)
+
+    if args.with_docker:
+        run_docker()
+    else:
+        transcribe.single_file(args.model_size)
+
+def run_docker():
+    subprocess.run(["docker", "build", "-t", "superlesson", "."])
+    subprocess.run(
+        [
+            "docker", "run",
+            "-it", "--rm",
+            "--name", "superlesson",
+            "-v", "./lessons:/SuperLesson/lessons",
+            "--gpus", "all",
+            "superlesson",
+            "poetry", "run", "transcribe"
+        ] + [
+            arg
+            for arg in sys.argv[1:]
+            if arg != "--with-docker"
+        ]
+    )
 
 
 def tmarks_step():
