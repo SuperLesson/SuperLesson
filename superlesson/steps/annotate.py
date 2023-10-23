@@ -2,9 +2,6 @@ import logging
 import os
 import tempfile
 
-import pypdf
-import typst
-
 from superlesson.storage import LessonFile, Slides
 
 from .step import Step
@@ -19,6 +16,7 @@ class Annotate:
 
     @Step.step(Step.annotate, Step.insert_tmarks)
     def to_pdf(self):
+        import pypdf
         with open(self._lecture_notes.full_path, "rb") as a:
             pdf = pypdf.PdfReader(a)
             w = (
@@ -39,6 +37,7 @@ class Annotate:
         logging.info(f"Annotated PDF saved as {output}")
 
     def _transcription_to_pdf(self, w) -> str:
+        import typst
         preamble = f"""
 #set page(
     width: {w}in,
