@@ -129,13 +129,15 @@ class Slides(UserList):
         return len(self.data) != 0
 
     def load(self, step: Step, depends_on: Step) -> Loaded:
-        if self._last_state is not Loaded.already_run and self.has_data():
+        if (self._last_state is Loaded.in_memory
+                and self.has_data()):
             logging.debug("Data already loaded")
             return Loaded.in_memory
         loaded, obj = self._store.load(step, depends_on)
         if loaded is Loaded.none:
             logging.debug("No data to load")
             return Loaded.none
+        assert obj is not None, "Slides object should be populated"
         data: List[Slide] = []
         for i in range(len(obj)):
             data.append(self._load_slide(obj[i]))
@@ -144,6 +146,7 @@ class Slides(UserList):
         return loaded
 
     def save(self, step: Step):
+        self._last_state = Loaded.in_memory
         if self._store.in_storage(step):
             self._store.save_json(step, [
                 slide.to_dict() for slide in self.data
