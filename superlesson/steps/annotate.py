@@ -16,24 +16,24 @@ class Annotate:
 
     @Step.step(Step.annotate, Step.insert_tmarks)
     def to_pdf(self):
-        import pypdf
-        with open(self._lecture_notes.full_path, "rb") as a:
-            pdf = pypdf.PdfReader(a)
-            w = (
-                pdf.pages[0].mediabox.width / 72
-            )  # dividing by 72 to do pt to inch conversion
-            logging.debug(f"Slide width: {w}")
-            output = self._transcription_to_pdf(w)
-            with open(output, "rb") as t:
-                trans = pypdf.PdfReader(t)
-                merger = pypdf.PdfWriter()
-                for i in range(len(pdf.pages)):
-                    merger.append(fileobj=pdf, pages=(i, i + 1))
-                    if i < len(trans.pages):
-                        merger.append(fileobj=trans, pages=(i, i + 1))
+        from pypdf import PdfReader, PdfWriter
 
-        with open(output, "wb") as f:
-            merger.write(f)
+        pdf = PdfReader(self._lecture_notes.full_path)
+
+        w = (
+            pdf.pages[0].mediabox.width / 72
+        )  # dividing by 72 to do pt to inch conversion
+        logging.debug(f"Slide width: {w}")
+        output = self._transcription_to_pdf(w)
+
+        trans = PdfReader(output)
+
+        merger = PdfWriter()
+        for i in range(len(self.slides)):
+            merger.append(fileobj=pdf, pages=(i, i + 1))
+            merger.append(fileobj=trans, pages=(i, i + 1))
+
+        merger.write(output)
         logging.info(f"Annotated PDF saved as {output}")
 
     @staticmethod
@@ -78,6 +78,7 @@ class Annotate:
 
     def _transcription_to_pdf(self, w) -> str:
         import typst
+
         preamble = f"""
 #set page(
     width: {w}in,
@@ -118,6 +119,7 @@ class Annotate:
             formatted_texts.append(current_text)
             current_text = next_text
         formatted_texts.append(current_text)
+
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
