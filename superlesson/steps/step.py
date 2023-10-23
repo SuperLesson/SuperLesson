@@ -11,6 +11,7 @@ class Step(Enum):
     verify_tbreaks_with_mpv = "verify_tbreaks_with_mpv"
     replace_words = "replace_words"
     improve_punctuation = "improve_punctuation"
+    enumerate_slides = "enumerate_slides"
     annotate = "annotate"
 
     @staticmethod

@@ -42,6 +42,9 @@ First, you should run `poetry install` in order to install all the
 dependencies. Keep in mind that as the project is updated you should run have
 to run it again.
 
+> ⚠️ In order to run the `enumerate` step, SL needs to be run in a terminal that supports the [Kitty
+> graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/).
+
 To run SL execute
 
 ```bash
@@ -57,7 +60,8 @@ This will execute all the following steps:
 3. `verify` all transitions using MPV
 4. `replace` known bogus words
 5. `improve` punctuation using ChatGPT
-6. `annotate` the lecture notes
+6. `enumerate` slides from tframes
+7. `annotate` the lecture notes
 
 You can also run individual steps using
 
