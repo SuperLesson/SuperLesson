@@ -16,7 +16,7 @@ def main():
 
     slides = Slides(lesson_files.lesson_root, args.run_all)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
-    transcribe.single_file()
+    transcribe.single_file(args.model_size)
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
@@ -97,8 +97,8 @@ def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:
 
 
 def transcribe_step():
-    _, transcribe = single_step_setup(Transcribe)
-    transcribe.single_file()
+    args, transcribe = single_step_setup(Transcribe)
+    transcribe.single_file(args.model_size)
 
 
 def tmarks_step():
