@@ -20,11 +20,10 @@ class Annotate:
 
         pdf = PdfReader(self._lecture_notes.full_path)
 
-        w = (
-            pdf.pages[0].mediabox.width / 72
-        )  # dividing by 72 to do pt to inch conversion
-        logging.debug(f"Slide width: {w}")
-        output = self._transcription_to_pdf(w)
+        # pt -> inch
+        slide_width = pdf.pages[0].mediabox.width / 72
+        logging.debug(f"Slide width: {slide_width}")
+        output = self._transcription_to_pdf(width=slide_width)
 
         trans = PdfReader(output)
 
@@ -76,12 +75,12 @@ class Annotate:
 
         return current, next
 
-    def _transcription_to_pdf(self, w) -> str:
+    def _transcription_to_pdf(self, width: int = 11) -> str:
         import typst
 
         preamble = f"""
 #set page(
-    width: {w}in,
+    width: {width}in,
     height: auto,
     margin: (
         top: 2in,
