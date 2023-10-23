@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
 
@@ -14,7 +15,65 @@ class Annotate:
         self._lecture_notes = lecture_notes
         self.slides = slides
 
-    @Step.step(Step.annotate, Step.insert_tmarks)
+    @Step.step(Step.enumerate_slides, Step.insert_tmarks)
+    def enumerate_slides_from_tframes(self):
+        from pypdf import PdfReader
+
+        max_slide_number = len(PdfReader(self._lecture_notes.full_path).pages)
+
+        def get_slide_number_from_user(default: int) -> int:
+            user_input = input(f"What is the number of this slide? (default: {default}) ")
+
+            if user_input == "":
+                return default
+            elif user_input.lower().startswith("n"):
+                return 0
+
+            try:
+                number = int(user_input)
+            except ValueError:
+                return default
+
+            if 0 < number < max_slide_number + 1:
+                return number
+
+            logging.warning(
+                f"There's no such slide number: {number} (should be between 1 and {max_slide_number})"
+            )
+            return default
+
+        last_answer = 0
+        for i, slide in enumerate(self.slides):
+            path = slide.png_path
+            assert path is not None, f"Slide {i} doesn't have a png_path"
+            self._sys_open(path)
+            number = get_slide_number_from_user(last_answer + 1)
+            if number == 0:
+                slide.number = None
+                continue
+            # if the user answered the last slide, we keep repeating
+            # TODO:is there a better heuristic?
+            if number >= max_slide_number:
+                last_answer = max_slide_number
+            else:
+                last_answer = number
+            slide.number = last_answer - 1
+
+    @staticmethod
+    def _sys_open(path: Path) -> int:
+        import subprocess
+
+        if not path.exists():
+            logging.warning(f"File {path} doesn't exist")
+            return 1
+
+        ret_code = subprocess.call(["kitty", "+kitten", "icat", str(path)])
+        if ret_code != 0:
+            logging.warning(f"Error opening {path}")
+
+        return ret_code
+
+    @Step.step(Step.annotate, Step.enumerate_slides)
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter
 
@@ -29,7 +88,13 @@ class Annotate:
 
         merger = PdfWriter()
         for i in range(len(self.slides)):
-            merger.append(fileobj=pdf, pages=(i, i + 1))
+            number = self.slides[i].number
+
+            if number is None:
+                continue
+            logging.debug(f"Adding slide {number} to annotated PDF")
+            merger.append(fileobj=pdf, pages=(number, number + 1))
+            logging.debug(f"Adding transcription to slide {i}")
             merger.append(fileobj=trans, pages=(i, i + 1))
 
         merger.write(output)

@@ -33,6 +33,7 @@ class Store:
         Step.insert_tmarks: File("marked", [Format.json]),
         Step.replace_words: File("replaced", [Format.json]),
         Step.improve_punctuation: File("improved", [Format.json, Format.txt]),
+        Step.enumerate_slides: File("enumerated", [Format.json]),
     }
 
     def __init__(self, lesson_root: Path):

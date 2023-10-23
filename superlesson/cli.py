@@ -42,6 +42,8 @@ def main():
         raise NotImplementedError(
             "Annotating from video is not implemented yet")
     annotate = Annotate(slides, lesson_files.lecture_notes)
+    annotate.enumerate_slides_from_tframes()
+    input("Press Enter to continue...")
     annotate.to_pdf()
 
 
@@ -146,6 +148,11 @@ def replace_step():
 def improve_step():
     _, transcribe = single_step_setup(Transcribe)
     transcribe.improve_punctuation()
+
+
+def enumerate_step():
+    _, annotate = single_step_setup(Annotate)
+    annotate.enumerate_slides_from_tframes()
 
 
 def annotate_step():
