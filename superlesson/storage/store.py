@@ -87,7 +87,7 @@ class Store:
     def load(self, step: Step, depends_on: Step) -> Tuple[Loaded, Optional[Any]]:
         if not self._run_all and self.in_storage(step):
             data = self._load(step)
-            if data is not None:
+            if data:
                 if input(f"{step.value} has already been run. Run again? (y/N) ").lower() != "y":
                     return (Loaded.already_run, data)
 
@@ -96,7 +96,9 @@ class Store:
                 raise Exception(
                     f"Step {step} depends on {depends_on}, but {depends_on} was not run yet.")
             if self.in_storage(s):
-                return (Loaded.new, self._load(s))
+                data = self._load(s)
+                if data:
+                    return (Loaded.new, data)
 
         return (Loaded.none, None)
 
