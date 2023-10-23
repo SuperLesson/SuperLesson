@@ -199,9 +199,9 @@ class Transcribe:
         # different = 0 < similarity_ratio < 1 = same
         if similarity_ratio < 0.40 and len(text) > 15:
             logging.info("The text was not improved by ChatGPT-3.5-turbo.")
-            logging.debug("Similarity:", similarity_ratio)
-            logging.debug("ORIGINAL:\n", text)
-            logging.debug("IMPROVED:\n", improved_text)
+            logging.debug(f"Similarity: {similarity_ratio}")
+            logging.debug(f"ORIGINAL:\n{text}")
+            logging.debug(f"IMPROVED:\n{improved_text}")
             return text
         else:
             return improved_text
