@@ -30,7 +30,7 @@ class Transcribe:
                                           language="pt", vad_filter=True)
 
         logging.info(f"Detected language {info.language} with probability {info.language_probability}")
-        self._run_with_pbar(segments, info)
+        segments = self._run_with_pbar(segments, info)
 
         for segment in segments:
             self.slides.append(
@@ -69,7 +69,9 @@ class Transcribe:
             last_burst = 0.0  # time of last iteration burst aka chunk
             set_delay = 0.1  # max time it takes to iterate chunk & minimum time between chunks
             jobs = []
+            transcription_segments = []
             for segment in segments:
+                transcription_segments.append(segment)
                 logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
                 timestamp_last = round(segment.end)
                 time_now = time.time()
@@ -86,6 +88,8 @@ class Transcribe:
                 pbar.update(duration - timestamp_last)
                 print('\33]0;'+ capture.getvalue().splitlines()[-1] +'\a', end='', flush=True)
                 print(capture.getvalue().splitlines()[-1])
+
+        return transcription_segments
 
     @staticmethod
     def _pbar_delayed(set_delay, capture, pbar):
