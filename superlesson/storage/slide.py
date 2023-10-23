@@ -120,7 +120,10 @@ class Slides(UserList):
             slide.transcription for slide in self.data[first:last + 1]
         ])
         assert end is not None
-        start = self.data[first - 1].timeframe.end.total_seconds()
+        if first > 0:
+            start = self.data[first - 1].timeframe.end.total_seconds()
+        else:
+            start = self.data[0].timeframe.start.total_seconds()
         new_slide = Slide(transcription, (start, end))
         new_slide.merged = True
         self.data = self.data[:first] + [new_slide] + self.data[last + 1:]
