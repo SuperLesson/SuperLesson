@@ -49,7 +49,7 @@ class Transitions:
         self.slides.merge()
 
         for i, path in enumerate(png_paths):
-            self.slides[i].png_paths = path
+            self.slides[i].png_path = path
 
     def _get_png_paths(self) -> List[Path]:
         tt_directory = self._transcription_source.path / "tframes"
