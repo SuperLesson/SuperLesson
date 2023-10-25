@@ -91,7 +91,7 @@ class LessonFiles:
 
         logging.info("Searching for files...")
         ignored = list(Store.txt_files())
-        ignored.append("transcription.pdf")
+        ignored.append("annotations.pdf")
         for file in self.lesson_root.iterdir():
             if file.name in ignored:
                 continue
