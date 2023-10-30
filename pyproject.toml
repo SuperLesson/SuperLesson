@@ -42,7 +42,7 @@ openai = "^0.28.1"
 tiktoken = "^0.5.1"
 
 [tool.poetry.group.annotate.dependencies]
-pypdf = { extras = ["crypto"], version = "^3.16.2" }
+pypdf = { extras = ["crypto"], version = "^3.17.0" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
