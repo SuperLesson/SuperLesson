@@ -16,7 +16,7 @@ def main():
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
 
-    slides = Slides(lesson_files.lesson_root, args.run_all)
+    slides = Slides(lesson_files.lesson_root)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
     if args.with_docker:
         run_docker()
@@ -60,9 +60,6 @@ def parse_args() -> Namespace:
                         choices=[FileType.notes.value, FileType.video.value],
                         default=None,
                         help="Use text/pdf or video as source for lecture notes")
-    parser.add_argument("--run-all",
-                        action="store_true",
-                        help="Run all steps")
     parser.add_argument("--model-size",  # model only works with pt now
                         choices=["tiny",  # "tiny.en",
                                  "base",  # "base.en",
@@ -96,7 +93,7 @@ def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:
     lesson_files = LessonFiles(
         args.lesson, args.transcribe_with, args.annotate_with)
 
-    slides = Slides(lesson_files.lesson_root, args.run_all)
+    slides = Slides(lesson_files.lesson_root)
     if _class is Annotate:
         instance = _class(slides, lesson_files.lecture_notes)
     else:
