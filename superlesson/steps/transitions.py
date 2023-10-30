@@ -29,17 +29,12 @@ class Transitions:
             logging.info(f"Extracting audio to {audio_path}")
             self._extract_audio(video_path, audio_path)
 
-        # silence_threshold_factor=10 worked for lesson_id = "2023-05-22_uc05_transporte_gases"
-        # silence_threshold_factor=10 or 9 didn"t work for lesson_id = "2023-06-12_uc05_envelhecimento_pulmonar_estrutura"
-        # now trying silence_threshold_factor = 8
-        # TODO: remove this try-except block
-        try:
-            silences  # need while in jupyter environment, cause this operation takes +1 minute to execute
-        except:  # noqa: E722
-            silences = self._detect_silence(audio_path)
+        silences = self._detect_silence(audio_path)
 
-        improved_transition_times = self._improve_tt(
-            total_seconds, silences, 2.0)
+        if len(silences) == 0:
+            improved_transition_times = total_seconds
+        else:
+            improved_transition_times = self._improve_tt(total_seconds, silences, 2.0)
 
         for i in range(len(improved_transition_times)):
             end = improved_transition_times[i]
