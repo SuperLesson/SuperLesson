@@ -2,6 +2,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slide, Slides
@@ -23,6 +24,8 @@ class Segment:
 class Transcribe:
     """Class to transcribe a lesson."""
 
+    _bucket_name = "lesson-audios"
+
     def __init__(self, slides: Slides, transcription_source: LessonFile):
         from dotenv import load_dotenv
 
@@ -43,7 +46,12 @@ class Transcribe:
         bench_start = datetime.now()
 
         if not local and getenv("REPLICATE_API_TOKEN"):
-            segments = self._transcribe_with_replicate(audio_path)
+            s3_url = self._upload_file_to_s3(audio_path)
+
+            if not model_size.startswith("large"):
+                logger.info("Ignoring model size and using large instead")
+
+            segments = self._transcribe_with_replicate(s3_url)
         else:
             if not local and (
                 input(
@@ -63,14 +71,14 @@ class Transcribe:
         logger.info(f"Transcription took {bench_duration}")
 
     @classmethod
-    def _transcribe_with_replicate(cls, audio_path: Path) -> list[Segment]:
+    def _transcribe_with_replicate(cls, url: str) -> list[Segment]:
         import replicate
 
         logger.info("Running replicate")
         output = replicate.run(
             "isinyaaa/whisperx:3720564e7790fad7d580a93d0a995a0451de7c2105359b6551efd42efc6bcaff",
             input={
-                "audio": open(str(audio_path), "rb"),
+                "audio": url,
                 "language": "pt",
                 "batch_size": 13,
                 "align_output": True,
@@ -82,6 +90,35 @@ class Transcribe:
             Segment(segment["word"], segment["start"], segment["end"])
             for segment in output["word_segments"]
         ]
+
+    @classmethod
+    def _upload_file_to_s3(cls, path: Path) -> str:
+        import boto3
+        from botocore.exceptions import ClientError
+
+        s3 = boto3.client("s3")
+
+        # TODO: we should salt it to improve privacy
+        # ideally, we should also encrypt the data, or figure out a way to
+        # authenticate from replicate
+        with open(path, "rb") as file:
+            data = file.read()
+            s3_name = sha256(data).hexdigest()
+
+        s3_path = f"https://{cls._bucket_name}.s3.amazonaws.com/{s3_name}"
+
+        try:
+            s3.head_object(Bucket=cls._bucket_name, Key=s3_name)
+            return s3_path
+        except ClientError:
+            pass
+
+        logger.info(f"Uploading file {file} to S3")
+
+        s3.upload_file(path, cls._bucket_name, s3_name)
+
+        logger.info(f"{file} uploaded to S3 as {s3_name}")
+        return s3_path
 
     @classmethod
     def _local_transcription(cls, transcription_path: Path, model_size: str):

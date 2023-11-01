@@ -15,6 +15,10 @@ OPENAI_TOKEN=<your_token>
 REPLICATE_API_TOKEN=<your_token>
 ```
 
+In order to use Replicate, you must also [set up AWS credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration) for putting the audio file into a
+bucket.
+This is necessary as Replicate will only take direct uploads of very small files.
+
 To set your API keys, you can either pass them by environment variables, or put them in a `.env`
 file at the root of the repository.
 
