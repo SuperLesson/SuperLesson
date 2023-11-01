@@ -38,8 +38,9 @@ class Transcribe:
         if self._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
+            threads = cpu_count() or 4
             model = WhisperModel(
-                model_size, device="cpu", cpu_threads=cpu_count(), compute_type="auto"
+                model_size, device="cpu", cpu_threads=threads, compute_type="auto"
             )
 
         segments, info = model.transcribe(
