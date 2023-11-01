@@ -50,7 +50,7 @@ def main():
     if args.with_docker:
         run_docker()
     else:
-        transcribe.single_file(args.model_size)
+        transcribe.single_file(args.model_size, args.transcribe_locally)
     input("Press Enter to continue...")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
@@ -110,6 +110,11 @@ def parse_args() -> Namespace:
         help="Choose whisper model size",
     )
     parser.add_argument(
+        "--transcribe-locally",
+        action="store_true",
+        help="Use faster whisper to transcribe locally",
+    )
+    parser.add_argument(
         "--use-silences",
         action="store_true",
         help="Use silences to improve transition times",
@@ -159,7 +164,7 @@ def transcribe_step():
     if args.with_docker:
         run_docker()
     else:
-        transcribe.single_file(args.model_size)
+        transcribe.single_file(args.model_size, args.transcribe_locally)
 
 
 def run_docker():

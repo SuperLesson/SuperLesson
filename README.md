@@ -4,16 +4,26 @@
 
 ## Setup
 
-SuperLesson (SL) uses [faster-whisper](https://github.com/guillaumekln/faster-whisper) in order to
-transcribe audio.
-You can use your GPU to run it faster, but you need to install some dependencies.
-Refer to their documentation for more details.
+SuperLesson (SL) uses [WhisperX](hhttps://github.com/m-bain/whisperX) through [Replicate](https://replicate.com) to transcribe audio.
+SL also uses ChatGPT to improve transcriptions.
 
-<!-- TODO: add instructions for using other models -->
+In order to access those services, the following keys are needed:
+```raw
+OPENAI_TOKEN=<your_token>
+# optional
+#OPENAI_ORG=<your_org>
+REPLICATE_API_TOKEN=<your_token>
+```
 
-SL also uses ChatGPT in order to improve transcriptions. To set your API key
-for OpenAI integration, create a `.env` file at the root of the repository, and
-add `OPENAI_TOKEN=<your-token>`. Optionally, also add the `OPENAI_ORG` key.
+To set your API keys, you can either pass them by environment variables, or put them in a `.env`
+file at the root of the repository.
+
+If you don't want to use Replicate, you can use `--local` flag to transcribe with [faster-whisper](https://github.com/guillaumekln/faster-whisper).
+Please check [the section on CUDA](#cuda-support) to learn more about GPU support.
+
+> Note that this may cause worse results, as faster-whisper doesn't support word level alignment.
+
+### Dependencies
 
 Install [poetry](https://python-poetry.org/) and run `poetry install` in order to install
 all the dependencies. Keep in mind that as the project is updated you should run have to run it
@@ -38,7 +48,7 @@ lessons/
 > ⚠️ In order to run the `enumerate` step, SL needs to be run in a terminal that supports the [Kitty
 > graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/).
 
-Use `poetry run` to run SL:
+To run SL execute
 
 ```sh
 poetry run superlesson [lesson-id]
