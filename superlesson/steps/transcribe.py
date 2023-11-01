@@ -25,9 +25,6 @@ class Transcribe:
 
     @Step.step(Step.transcribe)
     def single_file(self, model_size: str):
-        from faster_whisper import WhisperModel
-        from os import cpu_count
-
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
         if not audio_path.exists():
@@ -35,7 +32,24 @@ class Transcribe:
 
         bench_start = datetime.now()
 
-        if self._has_nvidia_gpu():
+        segments = self._local_transcription(audio_path, model_size)
+
+        for segment in segments:
+            self.slides.append(Slide(segment.text, TimeFrame(segment.start, segment.end)))
+            logger.info(
+                "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+            )
+
+        bench_duration = datetime.now() - bench_start
+        logger.info(f"Transcription took {bench_duration}")
+
+    @classmethod
+    def _local_transcription(cls, transcription_path: Path, model_size: str):
+        from os import cpu_count
+
+        from faster_whisper import WhisperModel
+
+        if cls._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
             threads = cpu_count() or 4
@@ -44,7 +58,7 @@ class Transcribe:
             )
 
         segments, info = model.transcribe(
-            str(audio_path),
+            str(transcription_path),
             beam_size=5,
             language="pt",
             vad_filter=True,
@@ -53,18 +67,8 @@ class Transcribe:
         logger.info(
             f"Detected language {info.language} with probability {info.language_probability}"
         )
-        segments = self._run_with_pbar(segments, info)
 
-        for segment in segments:
-            self.slides.append(
-                Slide(segment.text, TimeFrame(segment.start, segment.end))
-            )
-            logger.info(
-                "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
-            )
-
-        bench_duration = datetime.now() - bench_start
-        logger.info(f"Transcription took {bench_duration}")
+        return cls._run_with_pbar(segments, info)
 
     @staticmethod
     def _extract_audio(
