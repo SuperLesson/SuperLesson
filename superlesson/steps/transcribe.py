@@ -24,18 +24,27 @@ class Transcribe:
         if self._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
-            model = WhisperModel(model_size, device="cpu", cpu_threads=cpu_count(), compute_type="auto")
+            model = WhisperModel(
+                model_size, device="cpu", cpu_threads=cpu_count(), compute_type="auto"
+            )
 
-        segments, info = model.transcribe(str(self._transcription_source.full_path), beam_size=5,
-                                          language="pt", vad_filter=True)
+        segments, info = model.transcribe(
+            str(self._transcription_source.full_path),
+            beam_size=5,
+            language="pt",
+            vad_filter=True,
+        )
 
-        logging.info(f"Detected language {info.language} with probability {info.language_probability}")
+        logging.info(
+            f"Detected language {info.language} with probability {info.language_probability}"
+        )
         segments = self._run_with_pbar(segments, info)
 
         for segment in segments:
-            self.slides.append(
-                Slide(segment.text, (segment.start, segment.end)))
-            logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+            self.slides.append(Slide(segment.text, (segment.start, segment.end)))
+            logging.info(
+                "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+            )
 
         bench_duration = datetime.now() - bench_start
         logging.info(f"Transcription took {bench_duration}")
@@ -45,7 +54,7 @@ class Transcribe:
         from subprocess import check_output
 
         try:
-            check_output('nvidia-smi')
+            check_output("nvidia-smi")
             return True
         except Exception:
             return False
@@ -60,33 +69,50 @@ class Transcribe:
         bar_f = "{percentage:3.0f}% |  {remaining}  | {rate_noinv_fmt}"
         print("  %  | remaining |  rate")
 
-        capture = io.StringIO()                # capture progress bars from tqdm
+        capture = io.StringIO()  # capture progress bars from tqdm
 
-        with tqdm(file=capture, total=duration, unit=" audio seconds", smoothing=0.00001, bar_format=bar_f) as pbar:
+        with tqdm(
+            file=capture,
+            total=duration,
+            unit=" audio seconds",
+            smoothing=0.00001,
+            bar_format=bar_f,
+        ) as pbar:
             global timestamp_prev, timestamp_last
             timestamp_prev = 0  # last timestamp in previous chunk
             timestamp_last = 0  # current timestamp
             last_burst = 0.0  # time of last iteration burst aka chunk
-            set_delay = 0.1  # max time it takes to iterate chunk & minimum time between chunks
+            set_delay = (
+                0.1
+            )  # max time it takes to iterate chunk & minimum time between chunks
             jobs = []
             transcription_segments = []
             for segment in segments:
                 transcription_segments.append(segment)
-                logging.info("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                logging.info(
+                    "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+                )
                 timestamp_last = round(segment.end)
                 time_now = time.time()
                 if time_now - last_burst > set_delay:  # catch new chunk
                     last_burst = time_now
-                    job = Thread(target=self._pbar_delayed(set_delay, capture, pbar), daemon=False)
+                    job = Thread(
+                        target=self._pbar_delayed(set_delay, capture, pbar),
+                        daemon=False,
+                    )
                     jobs.append(job)
                     job.start()
 
             for job in jobs:
                 job.join()
 
-            if timestamp_last < duration: # silence at the end of the audio
+            if timestamp_last < duration:  # silence at the end of the audio
                 pbar.update(duration - timestamp_last)
-                print('\33]0;'+ capture.getvalue().splitlines()[-1] +'\a', end='', flush=True)
+                print(
+                    "\33]0;" + capture.getvalue().splitlines()[-1] + "\a",
+                    end="",
+                    flush=True,
+                )
                 print(capture.getvalue().splitlines()[-1])
 
         return transcription_segments
@@ -94,20 +120,28 @@ class Transcribe:
     @staticmethod
     def _pbar_delayed(set_delay, capture, pbar):
         """Gets last timestamp from chunk"""
+
         def pbar_update():
             global timestamp_prev
             time.sleep(set_delay)  # wait for whole chunk to be iterated
             pbar.update(timestamp_last - timestamp_prev)
-            print('\33]0;'+ capture.getvalue().splitlines()[-1] +'\a', end='', flush=True)
+            print(
+                "\33]0;" + capture.getvalue().splitlines()[-1] + "\a",
+                end="",
+                flush=True,
+            )
             print(capture.getvalue().splitlines()[-1])
             timestamp_prev = timestamp_last
+
         return pbar_update
 
     @Step.step(Step.replace_words, Step.insert_tmarks)
     def replace_words(self):
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
-            logging.warning(f"{data_folder} doesn't exist, so no replacements will be done")
+            logging.warning(
+                f"{data_folder} doesn't exist, so no replacements will be done"
+            )
             return
 
         # TODO: make this portable
@@ -158,16 +192,22 @@ class Transcribe:
             text = slide.transcription
             total_tokens = self._count_tokens(text)
             if total_tokens <= max_input_tokens:
-                slide.transcription = self._improve_text_with_chatgpt(text, sys_message, max_input_tokens)
+                slide.transcription = self._improve_text_with_chatgpt(
+                    text, sys_message, max_input_tokens
+                )
                 continue
 
-            logging.info("The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt.")
+            logging.info(
+                "The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt."
+            )
             logging.debug(text[:50])
 
             gpt_chunks = []
             for chunk in self._split_text(text, max_input_tokens):
                 gpt_chunks.append(
-                    self._improve_text_with_chatgpt(chunk, sys_message, max_input_tokens)
+                    self._improve_text_with_chatgpt(
+                        chunk, sys_message, max_input_tokens
+                    )
                 )
             slide.transcription = " ".join(gpt_chunks)
 
@@ -223,7 +263,7 @@ class Transcribe:
 
     @classmethod
     def _split_text(cls, text, max_tokens):
-        periods = text.split('.')
+        periods = text.split(".")
         if len(periods) > 1:
             chunks = []
             total_tokens = 0
@@ -232,12 +272,12 @@ class Transcribe:
                 tokens = cls._count_tokens(periods[i])
                 if tokens > max_tokens:
                     if start != i:
-                        chunks.append('. '.join(periods[start:i]))
+                        chunks.append(". ".join(periods[start:i]))
                     chunks.extend(cls._split_text(periods[i], max_tokens))
                     start = i + 1
                     total_tokens = 0
                 elif total_tokens + tokens > max_tokens:
-                    chunks.append('. '.join(periods[start:i]))
+                    chunks.append(". ".join(periods[start:i]))
                     start = i
                     total_tokens = tokens
                 else:
@@ -252,7 +292,7 @@ class Transcribe:
         for i in range(len(words)):
             tokens = cls._count_tokens(words[i])
             if total_tokens + tokens > max_tokens:
-                chunks.append(' '.join(words[start:i]))
+                chunks.append(" ".join(words[start:i]))
                 start = i
                 total_tokens = tokens
             else:
@@ -269,7 +309,7 @@ class Transcribe:
             # model="gpt-4",
             messages=messages,
             n=1,
-            temperature=temperature
+            temperature=temperature,
         )
         return response
 
@@ -280,7 +320,7 @@ class Transcribe:
             try:
                 logging.info("Asking GPT to improve punctuation")
                 result = cls._ai(messages, 0.1)
-                return result['choices'][0]['message']['content']
+                return result["choices"][0]["message"]["content"]
             except Exception as e:
                 logging.info(f"Retrying {tries} out of {max_tries}")
                 logging.debug("Error:", e)
@@ -294,6 +334,5 @@ class Transcribe:
 
         words1 = paragraph1.split()
         words2 = paragraph2.split()
-        similarity_ratio = difflib.SequenceMatcher(
-            None, words1, words2).ratio()
+        similarity_ratio = difflib.SequenceMatcher(None, words1, words2).ratio()
         return similarity_ratio

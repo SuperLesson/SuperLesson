@@ -58,8 +58,8 @@ class Transitions:
     def _get_relative_times(self, png_names: List[str]) -> List[datetime.timedelta]:
         import re
 
-        def to_timedelta(h, m, s): return datetime.timedelta(
-            hours=int(h), minutes=int(m), seconds=int(s))
+        def to_timedelta(h, m, s):
+            return datetime.timedelta(hours=int(h), minutes=int(m), seconds=int(s))
 
         # we have png files in the format XXXXXX.mp4_HH-MM-SS.png
         timestamps = []
@@ -83,19 +83,26 @@ class Transitions:
         audio = AudioSegment.from_wav(audio_file)
         silence_thresh = audio.dBFS - silence_threshold_factor
         silences = silence.detect_silence(
-            audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1)
-        silences = [((start / 1000), (stop / 1000))
-                    for start, stop in silences]  # convert to seconds
+            audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1
+        )
+        silences = [
+            ((start / 1000), (stop / 1000)) for start, stop in silences
+        ]  # convert to seconds
         return silences
 
     @Step.step(Step.verify_tbreaks_with_mpv, Step.insert_tmarks)
     def verify_tbreaks_with_mpv(self):
         # TODO: parameterize time translation
         time_translation = 6
-        relative_times = list(filter(lambda x: x < 0, [
-            slide.timeframe.start.total_seconds() - time_translation
-            for slide in self.slides
-        ]))
+        relative_times = list(
+            filter(
+                lambda x: x < 0,
+                [
+                    slide.timeframe.start.total_seconds() - time_translation
+                    for slide in self.slides
+                ],
+            )
+        )
 
         play_duration = 12
         self._play_video_at_times(relative_times, play_duration)
@@ -114,7 +121,9 @@ class Transitions:
 
     # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
     @staticmethod
-    def _extract_audio(input_file, output_file, audio_codec="pcm_s16le", channels=1, sample_rate=16000):
+    def _extract_audio(
+        input_file, output_file, audio_codec="pcm_s16le", channels=1, sample_rate=16000
+    ):
         import subprocess
 
         command = f"ffmpeg -loglevel quiet -i {input_file} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output_file}"
@@ -138,10 +147,8 @@ class Transitions:
         logging.info("Improving transition times")
         improved_transition_times = []
         for _time in times:
-            silence_begin = cls._nearest(
-                [silence[0] for silence in silences], _time)
-            silence_end = cls._nearest(
-                [silence[1] for silence in silences], _time)
+            silence_begin = cls._nearest([silence[0] for silence in silences], _time)
+            silence_end = cls._nearest([silence[1] for silence in silences], _time)
 
             if silence_begin < silence_end:
                 if not silence_begin < _time < silence_end:

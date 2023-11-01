@@ -36,16 +36,20 @@ class Step(Enum):
         def decorator(func: Callable):
             def wrapper(instance, *args, **kwargs):
                 from superlesson.storage.store import Loaded
+
                 match instance.slides.load(step, depends_on):
                     case Loaded.none:
                         if depends_on is not None:
                             raise Exception(
-                                f"Couldn't load from previous step: {step.value} depends on {depends_on}")
+                                f"Couldn't load from previous step: {step.value} depends on {depends_on}"
+                            )
                     case Loaded.already_run:
                         return
                 logging.info(f"Running step {step.value}")
                 ret = func(instance, *args, **kwargs)
                 instance.slides.save(step)
                 return ret
+
             return wrapper
+
         return decorator
