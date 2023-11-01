@@ -103,22 +103,30 @@ class Slides(UserList):
             end = self.data[last].timeframe.end.total_seconds()
 
         if first == last:
-            logging.debug(dedent(f"""
+            logging.debug(
+                dedent(
+                    f"""
                 Can't merge slide {first} with itself:
                     First matched: {self.data[first].timeframe}
                     Last matched: {self.data[last].timeframe}
-                """))
+                """
+                )
+            )
             return
 
         logging.info(f"Merging slides {first} until {last}")
-        logging.debug(dedent(f"""
+        logging.debug(
+            dedent(
+                f"""
                 First matched: {self.data[first].timeframe}
                 Last matched: {self.data[last].timeframe}
-            """))
+            """
+            )
+        )
 
-        transcription = "\n".join([
-            slide.transcription for slide in self.data[first:last + 1]
-        ])
+        transcription = "\n".join(
+            [slide.transcription for slide in self.data[first : last + 1]]
+        )
         assert end is not None
         if first > 0:
             start = self.data[first - 1].timeframe.end.total_seconds()
@@ -126,14 +134,13 @@ class Slides(UserList):
             start = self.data[0].timeframe.start.total_seconds()
         new_slide = Slide(transcription, (start, end))
         new_slide.merged = True
-        self.data = self.data[:first] + [new_slide] + self.data[last + 1:]
+        self.data = self.data[:first] + [new_slide] + self.data[last + 1 :]
 
     def has_data(self) -> bool:
         return len(self.data) != 0
 
     def load(self, step: Step, depends_on: Step) -> Loaded:
-        if (self._last_state is Loaded.in_memory
-                and self.has_data()):
+        if self._last_state is Loaded.in_memory and self.has_data():
             logging.debug("Data already loaded")
             return Loaded.in_memory
         loaded, obj = self._store.load(step, depends_on)
@@ -151,9 +158,7 @@ class Slides(UserList):
     def save(self, step: Step):
         self._last_state = Loaded.in_memory
         if self._store.in_storage(step):
-            self._store.save_json(step, [
-                slide.to_dict() for slide in self.data
-            ])
-            self._store.save_txt(step, "\n".join([
-                str(slide) + '\n' for slide in self.data
-            ]))
+            self._store.save_json(step, [slide.to_dict() for slide in self.data])
+            self._store.save_txt(
+                step, "\n".join([str(slide) + "\n" for slide in self.data])
+            )

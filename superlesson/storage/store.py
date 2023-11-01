@@ -76,8 +76,9 @@ class Store:
                     data = json_lib.load(f)
                 except json_lib.decoder.JSONDecodeError:
                     logging.error(
-                        f"Failed to load {step.value} from json. Try running the step again.")
-                    
+                        f"Failed to load {step.value} from json. Try running the step again."
+                    )
+
         if transcriptions is not None and data is not None:
             for i in range(len(data)):
                 data[i]["transcription"] = transcriptions[i].strip()
@@ -88,13 +89,19 @@ class Store:
         if self.in_storage(step):
             data = self._load(step)
             if data:
-                if input(f"{step.value} has already been run. Run again? (y/N) ").lower() != "y":
+                if (
+                    input(
+                        f"{step.value} has already been run. Run again? (y/N) "
+                    ).lower()
+                    != "y"
+                ):
                     return (Loaded.already_run, data)
 
         for s in Step.get_last(step):
             if s < depends_on:
                 raise Exception(
-                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet.")
+                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet."
+                )
             if self.in_storage(s):
                 data = self._load(s)
                 if data:

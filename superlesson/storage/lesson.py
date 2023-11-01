@@ -60,14 +60,17 @@ class LessonFiles:
 
     lesson_root: Path
 
-    def __init__(self, lesson: str,
-                 transcribe_with: Optional[FileType] = None,
-                 annotate_with: Optional[FileType] = None):
+    def __init__(
+        self,
+        lesson: str,
+        transcribe_with: Optional[FileType] = None,
+        annotate_with: Optional[FileType] = None,
+    ):
         if os.path.exists(lesson):
             self.lesson_root = Path(lesson)
         else:
             src_path = Path(__file__).parent
-            lesson_root =  src_path / "../../lessons" / lesson
+            lesson_root = src_path / "../../lessons" / lesson
             lesson_root = lesson_root.resolve()
 
             if lesson_root.exists():
@@ -110,10 +113,10 @@ class LessonFiles:
         """The file to be used for transcription."""
         if self._transcription_source is None:
             files = self._find_lesson_files(
-                [self._transcribe_with, FileType.video, FileType.audio])
+                [self._transcribe_with, FileType.video, FileType.audio]
+            )
             if not files:
-                raise ValueError(
-                    f"Transcription file not found on {self.lesson_root}")
+                raise ValueError(f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = files[0]
 
         logging.debug(f"Transcription source: {self._transcription_source}")
@@ -124,12 +127,15 @@ class LessonFiles:
         """The file to be used for annotation."""
         if self._lecture_notes is None:
             files = self._find_lesson_files(
-                [self._annotate_with, FileType.notes, FileType.video])
+                [self._annotate_with, FileType.notes, FileType.video]
+            )
             if not files:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
             for file in files:
                 if file.file_type == FileType.video:
-                    raise NotImplementedError("Annotating from video is not implemented yet")
+                    raise NotImplementedError(
+                        "Annotating from video is not implemented yet"
+                    )
                 if file.name.endswith(".pdf"):
                     self._lecture_notes = file
                     break
@@ -139,7 +145,9 @@ class LessonFiles:
         logging.debug(f"Lecture notes: {self._lecture_notes}")
         return self._lecture_notes
 
-    def _find_lesson_files(self, accepted_types: List[Optional[FileType]]) -> List[LessonFile]:
+    def _find_lesson_files(
+        self, accepted_types: List[Optional[FileType]]
+    ) -> List[LessonFile]:
         for file_type in accepted_types:
             if file_type is None:
                 continue

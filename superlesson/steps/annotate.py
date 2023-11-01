@@ -22,7 +22,9 @@ class Annotate:
         max_slide_number = len(PdfReader(self._lecture_notes.full_path).pages)
 
         def get_slide_number_from_user(default: int) -> int:
-            user_input = input(f"What is the number of this slide? (default: {default}) ")
+            user_input = input(
+                f"What is the number of this slide? (default: {default}) "
+            )
 
             if user_input == "":
                 return default
@@ -105,15 +107,17 @@ class Annotate:
         return "_" + text + "_"
 
     @classmethod
-    def fade_slide(cls, current: str, next: str, threshold: int = 20) -> tuple[str, str]:
-        dots = ['.', '!', '?']
+    def fade_slide(
+        cls, current: str, next: str, threshold: int = 20
+    ) -> tuple[str, str]:
+        dots = [".", "!", "?"]
 
         def text_before_dots(text: str, reverse: bool = False) -> tuple[int, int]:
             text = reversed(text) if reverse else text
             word_count = 0
             last_index = 0
             for index, char in enumerate(text):
-                if char == ' ':
+                if char == " ":
                     last_index = index
                     word_count += 1
                     continue
@@ -179,7 +183,9 @@ class Annotate:
         formatted_texts: list[str] = []
         current_text = self.slides[0].transcription
         for next in range(1, len(self.slides)):
-            current_text, next_text = self.fade_slide(current_text, self.slides[next].transcription)
+            current_text, next_text = self.fade_slide(
+                current_text, self.slides[next].transcription
+            )
             formatted_texts.append(current_text)
             current_text = next_text
         formatted_texts.append(current_text)
@@ -187,9 +193,9 @@ class Annotate:
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
-                "\n#pagebreak()\n".join(
-                    [text for text in formatted_texts]
-                ).encode("utf-8")
+                "\n#pagebreak()\n".join([text for text in formatted_texts]).encode(
+                    "utf-8"
+                )
             )
             temp_file_name = f.name
             logging.debug(f"Typst temp file saved as {temp_file_name}")
