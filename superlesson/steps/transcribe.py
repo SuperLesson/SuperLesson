@@ -1,5 +1,6 @@
 import logging
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -10,6 +11,13 @@ from .step import Step
 
 
 logger = logging.getLogger("superlesson")
+
+
+@dataclass
+class Segment:
+    text: str
+    start: float
+    end: float
 
 
 class Transcribe:
@@ -24,7 +32,9 @@ class Transcribe:
         self.slides = slides
 
     @Step.step(Step.transcribe)
-    def single_file(self, model_size: str):
+    def single_file(self, model_size: str, local: bool):
+        from os import getenv
+
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
         if not audio_path.exists():
@@ -32,16 +42,46 @@ class Transcribe:
 
         bench_start = datetime.now()
 
-        segments = self._local_transcription(audio_path, model_size)
+        if not local and getenv("REPLICATE_API_TOKEN"):
+            segments = self._transcribe_with_replicate(audio_path)
+        else:
+            if not local and (
+                input(
+                    "Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o"
+                )
+                != "y"
+            ):
+                raise Exception("Couldn't run transcription.")
+            segments = self._local_transcription(audio_path, model_size)
 
         for segment in segments:
-            self.slides.append(Slide(segment.text, TimeFrame(segment.start, segment.end)))
-            logger.info(
-                "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+            self.slides.append(
+                Slide(segment.text, TimeFrame(segment.start, segment.end))
             )
 
         bench_duration = datetime.now() - bench_start
         logger.info(f"Transcription took {bench_duration}")
+
+    @classmethod
+    def _transcribe_with_replicate(cls, audio_path: Path) -> list[Segment]:
+        import replicate
+
+        logger.info("Running replicate")
+        output = replicate.run(
+            "isinyaaa/whisperx:3720564e7790fad7d580a93d0a995a0451de7c2105359b6551efd42efc6bcaff",
+            input={
+                "audio": open(str(audio_path), "rb"),
+                "language": "pt",
+                "batch_size": 13,
+                "align_output": True,
+            },
+        )
+        logger.info("Replicate finished")
+        assert isinstance(output, dict), "Expected a dict"
+        return [
+            Segment(segment["word"], segment["start"], segment["end"])
+            for segment in output["word_segments"]
+        ]
 
     @classmethod
     def _local_transcription(cls, transcription_path: Path, model_size: str):
