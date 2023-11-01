@@ -1,12 +1,10 @@
 import logging
-import os
 import tempfile
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
 
 from .step import Step
-
 
 logger = logging.getLogger("superlesson")
 
@@ -90,28 +88,39 @@ class Annotate:
 
     @Step.step(Step.annotate, Step.enumerate_slides)
     def to_pdf(self):
-        from pypdf import PdfReader, PdfWriter
+        from pypdf import PdfReader, PdfWriter, Transformation
 
         pdf = PdfReader(self._lecture_notes.full_path)
 
+        page_width = pdf.pages[0].mediabox.width
         # pt -> inch
-        slide_width = pdf.pages[0].mediabox.width / 72
-        logger.debug(f"Slide width: {slide_width}")
-        output = self._transcription_to_pdf(width=slide_width)
+        width_in = page_width / 72
+        logger.debug(f"First page width: {width_in} inches")
+        transcription_pdf = self._transcription_to_pdf(width=width_in)
 
-        trans = PdfReader(output)
+        trans = PdfReader(transcription_pdf)
+        op = (
+            Transformation().scale(sx=0.7, sy=0.7).translate(tx=page_width * 0.15, ty=0)
+        )
 
         merger = PdfWriter()
-        for i in range(len(self.slides)):
-            number = self.slides[i].number
+        for i, slide in enumerate(self.slides):
+            number = slide.number
 
             if number is None:
                 continue
             logger.debug(f"Adding slide {number} to annotated PDF")
             merger.append(fileobj=pdf, pages=(number, number + 1))
+            page = merger.pages[-1]
+            page.mediabox.upper_right = (
+                page.mediabox.right,
+                page.mediabox.top * 0.7,
+            )  # cropping the top of each page
+            page.add_transformation(op)
             logger.debug(f"Adding transcription to slide {i}")
             merger.append(fileobj=trans, pages=(i, i + 1))
 
+        output = self._lecture_notes.path / "annotations.pdf"
         merger.write(output)
         logger.info(f"Annotated PDF saved as {output}")
 
@@ -165,10 +174,10 @@ class Annotate:
     width: {width}in,
     height: auto,
     margin: (
-        top: 2in,
-        bottom: 2in,
-        left: 1in,
-        right: 1in,
+        top: 0.5in,
+        bottom: 0.5in,
+        left: 1.5in,
+        right: 1.5in,
     ),
     fill: rgb("#fbfafa")
 )
@@ -183,13 +192,13 @@ class Annotate:
 
 #set par(
     justify: true,
-    leading: 1em,
+    leading: 0.65em,
     first-line-indent: 0pt,
     linebreaks: "optimized",
 )
 
 #show emph: it => (
-  text(rgb("#3f3f3f"), it.body)
+  text(rgb("#000000"), it.body)
 )
 
 """
@@ -203,7 +212,7 @@ class Annotate:
             current_text = next_text
         formatted_texts.append(current_text)
 
-        with tempfile.NamedTemporaryFile(delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
                 "\n#pagebreak()\n".join([text for text in formatted_texts]).encode(
@@ -212,6 +221,10 @@ class Annotate:
             )
             temp_file_name = f.name
             logger.debug(f"Typst temp file saved as {temp_file_name}")
-        output = os.path.join(self._lecture_notes.path, "annotations.pdf")
-        typst.compile(temp_file_name, output=output)
-        return output
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            temp_output = f.name
+            typst.compile(temp_file_name, output=temp_output)
+            logger.debug(f"Typst temp pdf saved as {temp_output}")
+
+        return temp_output
