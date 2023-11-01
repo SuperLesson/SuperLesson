@@ -1,6 +1,7 @@
 import logging
-from datetime import datetime
 import time
+from datetime import datetime
+from pathlib import Path
 
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
@@ -15,6 +16,10 @@ class Transcribe:
     """Class to transcribe a lesson."""
 
     def __init__(self, slides: Slides, transcription_source: LessonFile):
+        from dotenv import load_dotenv
+
+        load_dotenv()
+
         self._transcription_source = transcription_source
         self.slides = slides
 
@@ -22,6 +27,11 @@ class Transcribe:
     def single_file(self, model_size: str):
         from faster_whisper import WhisperModel
         from os import cpu_count
+
+        video_path = self._transcription_source.full_path
+        audio_path = video_path.with_suffix(".wav")
+        if not audio_path.exists():
+            self._extract_audio(video_path, audio_path)
 
         bench_start = datetime.now()
 
@@ -33,7 +43,7 @@ class Transcribe:
             )
 
         segments, info = model.transcribe(
-            str(self._transcription_source.full_path),
+            str(audio_path),
             beam_size=5,
             language="pt",
             vad_filter=True,
@@ -56,6 +66,39 @@ class Transcribe:
         logger.info(f"Transcription took {bench_duration}")
 
     @staticmethod
+    def _extract_audio(
+        input_path: Path,
+        output_path: Path,
+        audio_codec: str = "pcm_s16le",
+        channels: int = 1,
+        sample_rate: int = 16000,
+    ):
+        import subprocess
+
+        logger.info(f"Extracting audio from {input_path}")
+
+        subprocess.run(
+            " ".join(
+                [
+                    "ffmpeg",
+                    "-loglevel",
+                    "quiet",
+                    f"-i {input_path}",
+                    "-vn",
+                    f"-acodec {audio_codec}",
+                    f"-ac {channels}",
+                    f"-ar {sample_rate}",
+                    str(output_path),
+                ]
+            ),
+            shell=True,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+
+        logger.info(f"Audio saved as {output_path}")
+
+    @staticmethod
     def _has_nvidia_gpu():
         from subprocess import check_output
 
@@ -66,9 +109,11 @@ class Transcribe:
             return False
 
     # taken from https://github.com/guillaumekln/faster-whisper/issues/80#issuecomment-1565032268
-    def _run_with_pbar(self, segments, info):
+    @classmethod
+    def _run_with_pbar(cls, segments, info):
         import io
         from threading import Thread
+
         from tqdm import tqdm
 
         duration = round(info.duration)
@@ -103,7 +148,7 @@ class Transcribe:
                 if time_now - last_burst > set_delay:  # catch new chunk
                     last_burst = time_now
                     job = Thread(
-                        target=self._pbar_delayed(set_delay, capture, pbar),
+                        target=cls._pbar_delayed(set_delay, capture, pbar),
                         daemon=False,
                     )
                     jobs.append(job)
@@ -206,11 +251,10 @@ class Transcribe:
 
     @staticmethod
     def _load_openai_key():
-        from dotenv import load_dotenv
-        import openai
         import os
 
-        load_dotenv()
+        import openai
+
         openai.organization = os.getenv("OPENAI_ORG")
         openai.api_key = os.getenv("OPENAI_TOKEN")
 
