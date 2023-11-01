@@ -26,11 +26,8 @@ class Transitions:
         png_paths = self._get_png_paths()
         timestamps = self._get_ttimes_from_tframes([path.name for path in png_paths])
 
-        if audio_path.exists():
-            logger.warning("Audio file already exists")
-        else:
-            logger.info(f"Extracting audio to {audio_path}")
-            self._extract_audio(video_path, audio_path)
+        if not audio_path.exists():
+            raise Exception("Please run transcribe before inserting tmarks")
 
         if using_silences:
             references = []
@@ -132,16 +129,6 @@ class Transitions:
             TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences
         ]  # convert to seconds
         return silences
-
-    # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
-    @staticmethod
-    def _extract_audio(
-        input_file, output_file, audio_codec="pcm_s16le", channels=1, sample_rate=16000
-    ):
-        import subprocess
-
-        command = f"ffmpeg -loglevel quiet -i {input_file} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output_file}"
-        subprocess.call(command, shell=True, stdout=subprocess.DEVNULL)
 
     @classmethod
     def _improve_tts_with_references(
