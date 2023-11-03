@@ -54,7 +54,7 @@ class Slides(UserList):
         self._step_in_memory = None
         self._always_export_txt = always_export_txt
 
-    def merge(self, end: Optional[float] = None):
+    def merge(self, end: Optional[float] = None) -> bool:
         if len(self.data) == 0:
             raise ValueError("No slides to merge")
 
@@ -76,14 +76,14 @@ class Slides(UserList):
             end = self.data[last].timeframe.end
 
         if first == last:
-            logger.debug(
+            logger.warning(
                 dedent(
                     f"""Can't merge slide {first} with itself:
                     First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
                     Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}"""
                 )
             )
-            return
+            return False
 
         if not logger.isEnabledFor(logging.DEBUG):
             logger.info(f"Merging slides {first + 1} until {last + 1}")
@@ -107,6 +107,7 @@ class Slides(UserList):
         new_slide = Slide(transcription, TimeFrame(start, end))
         new_slide.merged = True
         self.data = self.data[:first] + [new_slide] + self.data[last + 1 :]
+        return True
 
     def has_data(self) -> bool:
         return len(self.data) != 0
