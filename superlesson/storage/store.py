@@ -24,19 +24,13 @@ class Loaded(Enum):
     in_memory = "in_memory"
 
 
-@dataclass
-class File:
-    name: str
-    formats: list[Format]
-
-
 class Store:
     _storage_map = {
-        Step.transcribe: File("transcription", [Format.json]),
-        Step.insert_tmarks: File("marked", [Format.json]),
-        Step.replace_words: File("replaced", [Format.json]),
-        Step.improve_punctuation: File("improved", [Format.json, Format.txt]),
-        Step.enumerate_slides: File("enumerated", [Format.json]),
+        Step.transcribe: "transcription",
+        Step.insert_tmarks: "marked",
+        Step.enumerate_slides: "enumerated",
+        Step.replace_words: "replaced",
+        Step.improve_punctuation: "improved",
     }
 
     def __init__(self, lesson_root: Path):
@@ -45,20 +39,18 @@ class Store:
 
     @classmethod
     def txt_files(cls) -> list[str]:
-        return [f"{file.name}.txt" for file in cls._storage_map.values()]
+        return [f"{file}.txt" for file in cls._storage_map.values()]
 
     def in_storage(self, step: Step) -> bool:
         return self._storage_map.get(step) is not None
 
-    def _get_storage_path(self, step: Step, format: Format) -> Optional[Path]:
+    def _get_storage_path(self, step: Step, format: Format) -> Path:
         file = self._storage_map[step]
-        if format not in file.formats:
-            return None
         if format is Format.json:
             if not self._storage_root.exists():
                 self._storage_root.mkdir()
-            return self._storage_root / f"{file.name}.json"
-        return self._lesson_root / f"{file.name}.txt"
+            return self._storage_root / f"{file}.json"
+        return self._lesson_root / f"{file}.txt"
 
     def _parse_txt(self, txt_path: Path) -> list[str]:
         with open(str(txt_path), "r") as f:
@@ -75,7 +67,6 @@ class Store:
 
     def _load(self, step: Step) -> Any:
         json_path = self._get_storage_path(step, Format.json)
-        assert json_path is not None, f"{step.value} doesn't define a json file"
         if not json_path.exists():
             return None
 
@@ -85,8 +76,12 @@ class Store:
             except json_lib.decoder.JSONDecodeError:
                 raise Exception(f"Failed to load {step.value} from json file")
 
+        if step is Step.transcribe:
+            logger.info("Skipping txt file parsing for transcribe step")
+            return data
+
         txt_path = self._get_storage_path(step, Format.txt)
-        if txt_path is not None and txt_path.exists():
+        if txt_path.exists():
             logger.info(f"Loading {step.value} from txt file")
             transcriptions = self._parse_txt(txt_path)
 
@@ -140,16 +135,14 @@ class Store:
 
     def save_json(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.json)
-        if path is not None:
-            logger.info(f"Saving {step.value} as json")
-            logger.debug(f"to {path}")
-            with open(str(path), "w") as f:
-                json_lib.dump(data, f)
+        logger.info(f"Saving {step.value} as json")
+        logger.debug(f"to {path}")
+        with open(str(path), "w") as f:
+            json_lib.dump(data, f)
 
     def save_txt(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.txt)
-        if path is not None:
-            logger.info(f"Saving {step.value} as txt")
-            logger.debug(f"to {path}")
-            with open(str(path), "w") as f:
-                f.write(data)
+        logger.info(f"Saving {step.value} as txt")
+        logger.debug(f"to {path}")
+        with open(str(path), "w") as f:
+            f.write(data)

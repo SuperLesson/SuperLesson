@@ -62,11 +62,12 @@ class Slide:
 
 
 class Slides(UserList):
-    def __init__(self, lesson_root: Path):
+    def __init__(self, lesson_root: Path, always_export_txt: bool = False):
         super().__init__()
         self.lesson_root = lesson_root
         self._store = Store(lesson_root)
         self._last_state = None
+        self._always_export_txt = always_export_txt
 
     @staticmethod
     def _load_slide(slide_obj: dict) -> Slide:
@@ -172,6 +173,9 @@ class Slides(UserList):
         self._last_state = Loaded.in_memory
         if self._store.in_storage(step):
             self._store.save_json(step, [slide.to_dict() for slide in self.data])
-            self._store.save_txt(
-                step, "\n".join([str(slide) + "\n" for slide in self.data])
-            )
+            if step is Step.transcribe:
+                return
+            if self._always_export_txt or step is Step.improve_punctuation:
+                self._store.save_txt(
+                    step, "\n".join([str(slide) + "\n" for slide in self.data])
+                )

@@ -121,7 +121,10 @@ def parse_args() -> Namespace:
         "--verbose", "-v", action="store_true", help="Increase output verbosity"
     )
     mut_group.add_argument(
-        "--debug", "-d", action="store_true", help="Print debug information"
+        "--debug",
+        "-d",
+        action="store_true",
+        help="Print debug information and save step outputs as txt",
     )
     return parser.parse_args()
 
@@ -139,7 +142,7 @@ def single_step_setup(_class: Any) -> tuple[Namespace, Any]:
 
     lesson_files = LessonFiles(args.lesson, args.transcribe_with, args.annotate_with)
 
-    slides = Slides(lesson_files.lesson_root)
+    slides = Slides(lesson_files.lesson_root, args.debug)
     if _class is Annotate:
         instance = _class(slides, lesson_files.lecture_notes)
     else:
@@ -203,7 +206,7 @@ def check_differences(lesson: str, prev: Step, next: Step):
 
 
 def tmarks_step():
-    _, transitions = single_step_setup(Transitions)
+    args, transitions = single_step_setup(Transitions)
     transitions.insert_tmarks()
 
 
