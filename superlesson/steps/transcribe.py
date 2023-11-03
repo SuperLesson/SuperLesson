@@ -328,7 +328,7 @@ class Transcribe:
             logger.debug(text[:50])
 
             gpt_chunks = []
-            for chunk in self._split_text(text, max_input_tokens):
+            for chunk in self._split_text(slide.transcription, max_input_tokens):
                 gpt_chunks.append(
                     self._improve_text_with_chatgpt(openai_client, chunk, sys_message)
                 )
@@ -370,7 +370,7 @@ class Transcribe:
 
     @classmethod
     def _split_text(cls, text, max_tokens):
-        periods = text.split(".")
+        periods = cls._split_in_periods(text)
         if len(periods) > 1:
             chunks = []
             total_tokens = 0
@@ -404,8 +404,35 @@ class Transcribe:
                 total_tokens = tokens
             else:
                 total_tokens += tokens
+        chunks.append(" ".join(words[start:]))
 
         return chunks
+
+    @classmethod
+    def _split_in_periods(cls, text: str) -> list[str]:
+        import re
+
+        splits = re.split(r"([.?!])", text)
+        if len(splits) == 1:
+            return splits
+
+        if splits[0] == "":
+            splits = splits[1:]
+
+        if splits[-1] == "":
+            splits = splits[:-1]
+
+        # merge punctuation with previous sentence
+        # we iterate over len(splits) - 1 because, if it's even, we get the same result, and if
+        # it's odd, we skip the invalid iteration at the end
+        periods = []
+        for i in range(0, len(splits) - 1, 2):
+            periods.append(splits[i] + splits[i + 1])
+
+        if len(splits) % 2 == 1:
+            periods.append(splits[-1])
+
+        return periods
 
     @staticmethod
     def _ai(client, messages, temperature=0):
