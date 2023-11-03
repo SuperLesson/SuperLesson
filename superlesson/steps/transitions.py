@@ -57,16 +57,20 @@ class Transitions:
             logger.warning("No references found, skipping improvement")
             improved = timestamps
 
+        slide_i = 0
+        tframe_i = 0
         for time in improved:
-            self.slides.merge(time)
+            if self.slides.merge(time):
+                self.slides[slide_i].tframe = tframes[tframe_i].path
+                slide_i += 1
+            else:
+                logger.warning(
+                    f"No slide found for transition {seconds_to_timestamp(time)}"
+                )
+            tframe_i += 1
 
         # use this to merge the last slides
         self.slides.merge()
-
-        assert len(self.slides) == len(tframes) + 1
-
-        for i, tframe in enumerate(tframes):
-            self.slides[i].tframe = tframe.path
 
     @staticmethod
     def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:
