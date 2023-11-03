@@ -60,31 +60,32 @@ class Store:
             return self._storage_root / f"{file.name}.json"
         return self._lesson_root / f"{file.name}.txt"
 
+    def _parse_txt(self, txt_path: Path) -> list[str]:
+        with open(str(txt_path), "r") as f:
+            transcriptions = re.split("====== SLIDE .* ======", f.read())[1:]
+
+        return transcriptions
+
     def _load(self, step: Step) -> Any:
-        txt_path = self._get_storage_path(step, Format.txt)
-        transcriptions = None
-        if txt_path is not None and txt_path.exists():
-            with open(str(txt_path), "r") as f:
-                transcriptions = re.split("====== SLIDE .* ======", f.read())[1:]
-
-            if len(transcriptions) == 0:
-                transcriptions = None
-
         json_path = self._get_storage_path(step, Format.json)
         assert json_path is not None, f"{step.value} doesn't define a json file"
-        data = None
-        if json_path.exists():
-            with open(str(json_path), "r") as f:
-                try:
-                    data = json_lib.load(f)
-                except json_lib.decoder.JSONDecodeError:
-                    logger.error(
-                        f"Failed to load {step.value} from json. Try running the step again."
-                    )
+        if not json_path.exists():
+            return None
 
-        if transcriptions is not None and data is not None:
-            for i in range(len(data)):
-                data[i]["transcription"] = transcriptions[i].strip()
+        with open(str(json_path), "r") as f:
+            try:
+                data = json_lib.load(f)
+            except json_lib.decoder.JSONDecodeError:
+                raise Exception(f"Failed to load {step.value} from json file")
+
+        txt_path = self._get_storage_path(step, Format.txt)
+        if txt_path is not None and txt_path.exists():
+            logger.info(f"Loading {step.value} from txt file")
+            transcriptions = self._parse_txt(txt_path)
+
+            if transcriptions:
+                for i in range(len(data)):
+                    data[i]["transcription"] = transcriptions[i]
 
         return data
 
@@ -110,6 +111,7 @@ class Store:
             if self.in_storage(s):
                 data = self._load(s)
                 if data:
+                    logger.info(f"Loaded step {s.value}")
                     return (Loaded.new, data)
 
         return (Loaded.none, None)
