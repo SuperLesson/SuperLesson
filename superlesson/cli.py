@@ -56,7 +56,7 @@ def main():
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError("Transcribing from audio is not implemented yet")
     transitions = Transitions(slides, lesson_files.transcription_source)
-    transitions.merge_segments()
+    transitions.merge_segments(args.use_silences)
     input("Press Enter to continue...")
     transitions.verify_tbreaks_with_mpv()
     input("Press Enter to continue...")
@@ -110,6 +110,11 @@ def parse_args() -> Namespace:
         ],
         default="large-v2",
         help="Choose whisper model size",
+    )
+    parser.add_argument(
+        "--use-silences",
+        action="store_true",
+        help="Use silences to improve transition times",
     )
     parser.add_argument(
         "--with-docker",
@@ -206,8 +211,8 @@ def check_differences(lesson: str, prev: Step, next: Step):
 
 
 def merge_step():
-    _, transitions = single_step_setup(Transitions)
-    transitions.merge_segments()
+    args, transitions = single_step_setup(Transitions)
+    transitions.merge_segments(args.use_silences)
 
 
 def verify_step():
