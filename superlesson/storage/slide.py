@@ -153,7 +153,12 @@ class Slides(UserList):
         assert obj is not None, "Slides object should be populated"
         data: list[Slide] = []
         for i in range(len(obj)):
-            data.append(self._load_slide(obj[i]))
+            slide = self._load_slide(obj[i])
+            # HACK: loading from transcribe will show each word as a separate slide
+            # so let's just skip those
+            if depends_on is not Step.transcribe:
+                logger.debug("Loaded slide: %s", repr(slide))
+            data.append(slide)
         self.data = data
         self._last_state = loaded
         return loaded
