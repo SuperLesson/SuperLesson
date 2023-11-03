@@ -22,6 +22,12 @@ class Segment:
     end: float
 
 
+@dataclass
+class Prompt:
+    body: str
+    slide: int = 0
+
+
 class Transcribe:
     """Class to transcribe a lesson."""
 
@@ -310,15 +316,25 @@ class Transcribe:
                 "Please review README.md for instructions on how to set up your OpenAI token"
             ) from e
 
+        logger.debug("Splitting into prompts")
+        prompts = self._split_into_prompts(
+            [slide.transcription for slide in self.slides],
+            max_input_tokens,
+        )
+
         bench_start = datetime.now()
 
-        for slide in self.slides:
-            gpt_chunks = []
-            for chunk in self._split_into_chunks(slide.transcription, max_input_tokens):
-                gpt_chunks.append(
-                    self._improve_text_with_chatgpt(openai_client, chunk, context)
-                )
-            slide.transcription = " ".join(gpt_chunks)
+        last_slide = 0
+        improved_transcription = []
+        for prompt in prompts:
+            if prompt.slide != last_slide:
+                self.slides[last_slide].transcription = " ".join(improved_transcription)
+                improved_transcription = []
+                last_slide = prompt.slide
+            completion = self._improve_text_with_chatgpt(
+                openai_client, prompt.body, context
+            )
+            improved_transcription.append(completion)
 
         bench_duration = datetime.now() - bench_start
         logger.info(f"Transcription took {bench_duration}")
@@ -351,18 +367,26 @@ class Transcribe:
         return len(encoding.encode(text)) + tokens_per_message
 
     @classmethod
-    def _split_into_chunks(cls, transcription: str, max_tokens: int) -> list[str]:
-        chunks = []
-        for period in cls._split_in_periods(transcription):
-            tokens = cls._count_tokens(period)
-            if tokens > max_tokens:
-                logger.debug(f"Splitting text with {tokens} tokens")
-                words = period.split()
-                chunks.extend(cls._merge_chunks(words, max_tokens))
-            else:
-                chunks.append(period)
+    def _split_into_prompts(
+        cls, transcriptions: list[str], max_tokens: int
+    ) -> list[Prompt]:
+        prompts = []
+        for i, transcription in enumerate(transcriptions):
+            chunks = []
+            for period in cls._split_in_periods(transcription):
+                tokens = cls._count_tokens(period)
+                if tokens > max_tokens:
+                    logger.debug(f"Splitting text with {tokens} tokens")
+                    words = period.split()
+                    chunks.extend(cls._merge_chunks(words, max_tokens))
+                else:
+                    chunks.append(period)
 
-        return cls._merge_chunks(chunks, max_tokens)
+            merged = cls._merge_chunks(chunks, max_tokens)
+            for text in merged:
+                prompts.append(Prompt(text, i))
+
+        return prompts
 
     @classmethod
     def _split_in_periods(cls, text: str) -> list[str]:
