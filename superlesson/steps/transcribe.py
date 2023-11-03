@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,6 +11,7 @@ from typing import cast, Optional
 
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
+from superlesson.storage.store import Store
 
 from .step import Step, step
 
@@ -164,8 +166,6 @@ class Transcribe:
         channels: int = 1,
         sample_rate: int = 16000,
     ):
-        import subprocess
-
         logger.info(f"Extracting audio from {input_path}")
 
         subprocess.run(
@@ -191,10 +191,8 @@ class Transcribe:
 
     @staticmethod
     def _has_nvidia_gpu():
-        from subprocess import check_output
-
         try:
-            check_output("nvidia-smi")
+            subprocess.check_output("nvidia-smi")
             return True
         except Exception:
             return False
@@ -296,6 +294,23 @@ class Transcribe:
             for slide in self.slides:
                 slide.transcription = slide.transcription.replace(word, rep)
 
+    @staticmethod
+    def _diff_gpt(before: str, after: str):
+        file1 = Store.temp_save(before)
+        file2 = Store.temp_save(after)
+
+        subprocess.run(
+            " ".join(
+                [
+                    "wdiff",
+                    "-n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m'",
+                    str(file1),
+                    str(file2),
+                ]
+            ),
+            shell=True,
+        )
+
     @step(Step.improve, Step.merge)
     def improve_punctuation(self):
         context = """The following is a transcription of a lecture.
@@ -330,8 +345,9 @@ class Transcribe:
             if similarity_ratio < 0.40:
                 logger.info("The text was not improved by ChatGPT-3.5-turbo.")
                 logger.debug(f"Similarity: {similarity_ratio}")
-                logger.debug(f"ORIGINAL:\n{text}")
-                logger.debug(f"IMPROVED:\n{completion}")
+                logger.debug(f"Diffing GPT output for slide {prompt.slide}")
+                if logger.isEnabledFor(logging.DEBUG):
+                    self._diff_gpt(text, completion)
                 continue
             if prompt.slide != last_slide:
                 self.slides[last_slide].transcription = " ".join(improved_transcription)

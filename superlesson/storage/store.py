@@ -28,13 +28,15 @@ class Store:
             return self._storage_root / f"{filename}.json"
         return self._lesson_root / f"{filename}.txt"
 
-    def _parse_txt(self, txt_path: Path) -> list[str]:
+    @staticmethod
+    def _parse_txt(txt_path: Path) -> list[str]:
         return [
             format_transcription(text)
             for text in re.split(r"====== SLIDE .* ======", txt_path.read_text())[1:]
         ]
 
-    def _parse_json(self, json_path: Path) -> list[dict[str, Any]]:
+    @staticmethod
+    def _parse_json(json_path: Path) -> list[dict[str, Any]]:
         json_data = json_path.read_text()
         data = json_lib.loads(json_data)
 
@@ -70,7 +72,8 @@ class Store:
 
         return data
 
-    def temp_save(self, txt_data: Any) -> Path:
+    @staticmethod
+    def temp_save(txt_data: Any) -> Path:
         import tempfile
 
         with tempfile.NamedTemporaryFile(
