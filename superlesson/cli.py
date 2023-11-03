@@ -2,7 +2,7 @@ import sys
 import logging
 import subprocess
 from argparse import ArgumentParser, Namespace
-from typing import Any, Tuple
+from typing import Any
 
 from .steps import Annotate, Transcribe, Transitions
 from .storage import LessonFiles, Slides
@@ -106,7 +106,7 @@ def set_log_level(args: Namespace):
         logger.setLevel(logging.INFO)
 
 
-def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:
+def single_step_setup(_class: Any) -> tuple[Namespace, Any]:
     args = parse_args()
     set_log_level(args)
 

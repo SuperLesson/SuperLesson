@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, Optional
 
 
 logger = logging.getLogger("superlesson")
@@ -18,7 +18,7 @@ class Step(Enum):
     annotate = "annotate"
 
     @staticmethod
-    def to_list() -> List[Step]:
+    def to_list() -> list[Step]:
         return list([s for s in Step])
 
     @classmethod

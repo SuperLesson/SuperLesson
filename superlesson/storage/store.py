@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 from superlesson.steps.step import Step
 
@@ -27,7 +27,7 @@ class Loaded(Enum):
 @dataclass
 class File:
     name: str
-    formats: List[Format]
+    formats: list[Format]
 
 
 class Store:
@@ -44,7 +44,7 @@ class Store:
         self._storage_root = lesson_root / ".data"
 
     @classmethod
-    def txt_files(cls) -> List[str]:
+    def txt_files(cls) -> list[str]:
         return [f"{file.name}.txt" for file in cls._storage_map.values()]
 
     def in_storage(self, step: Step) -> bool:
@@ -88,7 +88,7 @@ class Store:
 
         return data
 
-    def load(self, step: Step, depends_on: Step) -> Tuple[Loaded, Optional[Any]]:
+    def load(self, step: Step, depends_on: Step) -> tuple[Loaded, Optional[Any]]:
         if self.in_storage(step):
             data = self._load(step)
             if data:

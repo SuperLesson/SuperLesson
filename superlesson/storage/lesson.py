@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from .store import Store
 
@@ -83,14 +83,14 @@ class LessonFiles:
 
         logger.debug(f"Lesson root: {self.lesson_root}")
 
-        self._files: List[LessonFile] = []
+        self._files: list[LessonFile] = []
         self._transcribe_with = transcribe_with
         self._annotate_with = annotate_with
         self._transcription_source: Optional[LessonFile] = None
         self._lecture_notes: Optional[LessonFile] = None
 
     @property
-    def files(self) -> List[LessonFile]:
+    def files(self) -> list[LessonFile]:
         """All usable files in lesson folder."""
         if len(self._files) > 0:
             return self._files
@@ -149,8 +149,8 @@ class LessonFiles:
         return self._lecture_notes
 
     def _find_lesson_files(
-        self, accepted_types: List[Optional[FileType]]
-    ) -> List[LessonFile]:
+        self, accepted_types: list[Optional[FileType]]
+    ) -> list[LessonFile]:
         for file_type in accepted_types:
             if file_type is None:
                 continue
@@ -160,6 +160,6 @@ class LessonFiles:
 
         return []
 
-    def _get_files(self, file_type: FileType) -> List[LessonFile]:
+    def _get_files(self, file_type: FileType) -> list[LessonFile]:
         """Get all files of a given type."""
         return [file for file in self.files if file.file_type == file_type]
