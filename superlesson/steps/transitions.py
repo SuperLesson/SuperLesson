@@ -33,7 +33,7 @@ class Transitions:
         silences = self._detect_silence(audio_path)
 
         if len(silences) != 0:
-            improved = self._improve_tt(timestamps, silences, 2.0)
+            improved = self._improve_tts_with_silences(timestamps, silences, 2.0)
         else:
             logger.debug("Found no silences")
             improved = timestamps
@@ -140,25 +140,40 @@ class Transitions:
         return sorted(l, key=lambda i: abs(i - K))[0]
 
     @classmethod
-    def _improve_tt(cls, times, silences, threshold):
+    def _improve_tts_with_silences(
+        cls,
+        timestamps: list[float],
+        silences: list[tuple[float, float]],
+        threshold: float,
+    ) -> list[float]:
         logger.info("Improving transition times")
-        improved_transition_times = []
-        for _time in times:
-            silence_begin = cls._nearest([silence[0] for silence in silences], _time)
-            silence_end = cls._nearest([silence[1] for silence in silences], _time)
 
-            if silence_begin < silence_end:
-                if not silence_begin < _time < silence_end:
-                    improved_transition_times.append(silence_begin)
-                else:
-                    improved_transition_times.append(_time)
-            # teacher speaks before the slide changes
-            elif silence_end < _time and _time - silence_end < threshold:
-                improved_transition_times.append(silence_end)
-            # teacher silent after the slide changes
-            elif silence_begin > _time and silence_begin - _time < threshold:
-                improved_transition_times.append(silence_begin)
-            else:
-                improved_transition_times.append(_time)
+        improved = timestamps.copy()
 
-        return improved_transition_times
+        si = 0
+        ti = 0
+        while ti < len(timestamps) and si < len(silences):
+            silence_start, silence_end = silences[si]
+            time = timestamps[ti]
+            if silence_start < time < silence_end:
+                ti += 1
+            elif silence_end < time:
+                # teacher speaks before the slide changes
+                if time - silence_end < threshold:
+                    improved[ti] = silence_end
+                    ti += 1
+                si += 1
+            elif time < silence_start:
+                # teacher silent after the slide changes
+                if silence_start - time < threshold:
+                    improved[ti] = silence_start
+                ti += 1
+
+        if improved != timestamps:
+            logger.info("Improved transition times")
+            logger.debug(
+                "%s",
+                [str(datetime.timedelta(seconds=time)) for time in improved],
+            )
+
+        return improved
