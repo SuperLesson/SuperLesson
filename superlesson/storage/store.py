@@ -62,7 +62,14 @@ class Store:
 
     def _parse_txt(self, txt_path: Path) -> list[str]:
         with open(str(txt_path), "r") as f:
-            transcriptions = re.split("====== SLIDE .* ======", f.read())[1:]
+            transcriptions = re.split(r"====== SLIDE .* ======", f.read())[1:]
+
+        for i, text in enumerate(transcriptions):
+            text = text.strip()
+            text = re.sub(r"\n\n", "<br>", text)
+            text = re.sub(r"\s+", " ", text)
+            text = re.sub(r"<br>", "\n\n", text)
+            transcriptions[i] = text
 
         return transcriptions
 
@@ -83,9 +90,13 @@ class Store:
             logger.info(f"Loading {step.value} from txt file")
             transcriptions = self._parse_txt(txt_path)
 
-            if transcriptions:
+            if transcriptions and len(transcriptions) == len(data):
                 for i in range(len(data)):
                     data[i]["transcription"] = transcriptions[i]
+            else:
+                logger.warning(
+                    f"Couldn't load from file {txt_path}, make sure it's properly formatted"
+                )
 
         return data
 
