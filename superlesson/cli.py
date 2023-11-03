@@ -45,7 +45,7 @@ def main():
 
     lesson_files = LessonFiles(args.lesson, args.transcribe_with, args.annotate_with)
 
-    slides = Slides(lesson_files.lesson_root)
+    slides = Slides(lesson_files.lesson_root, args.debug)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
     if args.with_docker:
         run_docker()
@@ -60,15 +60,15 @@ def main():
     input("Press Enter to continue...")
     transitions.verify_tbreaks_with_mpv()
     input("Press Enter to continue...")
+    annotate = Annotate(slides, lesson_files.lecture_notes)
+    annotate.enumerate_slides_from_tframes()
+    input("Press Enter to continue...")
     transcribe.replace_words()
     input("Press Enter to continue...")
     transcribe.improve_punctuation()
     input("Press Enter to continue...")
     if lesson_files.lecture_notes.file_type == FileType.video:
         raise NotImplementedError("Annotating from video is not implemented yet")
-    annotate = Annotate(slides, lesson_files.lecture_notes)
-    annotate.enumerate_slides_from_tframes()
-    input("Press Enter to continue...")
     annotate.to_pdf()
 
 
