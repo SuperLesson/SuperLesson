@@ -305,7 +305,7 @@ class Transcribe:
         """
 
         margin = 20  # to avoid errors
-        max_input_tokens = (4096 - self._count_tokens(context)) // 2 - margin
+        max_input_tokens = (2**14 - self._count_tokens(context)) // 2 - margin
         logger.debug(f"Max input tokens: {max_input_tokens}")
 
         logger.debug("Splitting into prompts")
@@ -454,7 +454,7 @@ class Transcribe:
         logger.debug("Completing prompt: %s", prompt)
         try:
             completion = await client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo-1106",
                 # model="gpt-4",
                 messages=messages,
                 n=1,
