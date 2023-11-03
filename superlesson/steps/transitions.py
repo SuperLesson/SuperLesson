@@ -8,6 +8,9 @@ from superlesson.storage import LessonFile, Slides
 from .step import Step
 
 
+logger = logging.getLogger("superlesson")
+
+
 class Transitions:
     def __init__(self, slides: Slides, transcription_source: LessonFile):
         self._transcription_source = transcription_source
@@ -115,7 +118,7 @@ class Transitions:
         player.play(str(self._transcription_source.full_path))
         player.wait_until_playing()
         for _time in times:
-            logging.debug(f"Playing video at time {_time}")
+            logger.debug(f"Playing video at time {_time}")
             player.seek(_time, reference="absolute", precision="exact")
             sleep(duration)
 
@@ -144,7 +147,7 @@ class Transitions:
 
     @classmethod
     def _improve_tt(cls, times, silences, threshold):
-        logging.info("Improving transition times")
+        logger.info("Improving transition times")
         improved_transition_times = []
         for _time in times:
             silence_begin = cls._nearest([silence[0] for silence in silences], _time)

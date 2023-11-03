@@ -5,6 +5,9 @@ from enum import Enum
 from typing import Callable, Iterable, List, Optional
 
 
+logger = logging.getLogger("superlesson")
+
+
 class Step(Enum):
     transcribe = "transcribe"
     insert_tmarks = "insert_tmarks"
@@ -45,7 +48,7 @@ class Step(Enum):
                             )
                     case Loaded.already_run:
                         return
-                logging.info(f"Running step {step.value}")
+                logger.info(f"Running step {step.value}")
                 ret = func(instance, *args, **kwargs)
                 instance.slides.save(step)
                 return ret

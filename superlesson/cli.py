@@ -9,6 +9,14 @@ from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
 
 
+logging.basicConfig(
+    format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+    level=logging.WARNING,
+)
+logger = logging.getLogger("superlesson")
+
+
 def main():
     args = parse_args()
     set_log_level(args)
@@ -93,9 +101,9 @@ def parse_args() -> Namespace:
 
 def set_log_level(args: Namespace):
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     elif args.verbose:
-        logging.basicConfig(level=logging.INFO)
+        logger.setLevel(logging.INFO)
 
 
 def single_step_setup(_class: Any) -> Tuple[Namespace, Any]:

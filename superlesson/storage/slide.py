@@ -11,6 +11,9 @@ from superlesson.steps.step import Step
 from .store import Loaded, Store
 
 
+logger = logging.getLogger("superlesson")
+
+
 @dataclass
 class TimeFrame:
     start: timedelta
@@ -103,7 +106,7 @@ class Slides(UserList):
             end = self.data[last].timeframe.end.total_seconds()
 
         if first == last:
-            logging.debug(
+            logger.debug(
                 dedent(
                     f"""
                 Can't merge slide {first} with itself:
@@ -114,8 +117,8 @@ class Slides(UserList):
             )
             return
 
-        logging.info(f"Merging slides {first} until {last}")
-        logging.debug(
+        logger.info(f"Merging slides {first} until {last}")
+        logger.debug(
             dedent(
                 f"""
                 First matched: {self.data[first].timeframe}
@@ -141,11 +144,11 @@ class Slides(UserList):
 
     def load(self, step: Step, depends_on: Step) -> Loaded:
         if self._last_state is Loaded.in_memory and self.has_data():
-            logging.debug("Data already loaded")
+            logger.debug("Data already loaded")
             return Loaded.in_memory
         loaded, obj = self._store.load(step, depends_on)
         if loaded is Loaded.none:
-            logging.debug("No data to load")
+            logger.debug("No data to load")
             return Loaded.none
         assert obj is not None, "Slides object should be populated"
         data: List[Slide] = []
