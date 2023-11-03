@@ -13,7 +13,7 @@ logger = logging.getLogger("superlesson")
 class FileType(Enum):
     video = "video"
     audio = "audio"
-    notes = "notes"
+    slides = "slides"
 
 
 @dataclass
@@ -46,11 +46,11 @@ class LessonFile:
             case "audio":
                 file_type = FileType.audio
             case "text":
-                file_type = FileType.notes
+                file_type = FileType.slides
             case _:
                 # application
                 if name.endswith(".pdf"):
-                    file_type = FileType.notes
+                    file_type = FileType.slides
                 else:
                     raise ValueError(f"File type not found for {name}")
         return file_type
@@ -132,14 +132,14 @@ class LessonFiles:
     def presentation(self) -> LessonFile:
         """The file to be used for annotation."""
         if self._presentation is None:
-            files = self._find_lesson_files([FileType.notes])
+            files = self._find_lesson_files([FileType.slides])
             for file in files:
                 if file.name.endswith(".pdf"):
                     self._presentation = file
                     logger.debug(f"Presentation: {self._presentation}")
                     break
             if self._presentation is None:
-                raise ValueError(f"Notes file not found on {self.lesson_root}")
+                raise ValueError(f"Presentation file not found on {self.lesson_root}")
 
         return self._presentation
 
