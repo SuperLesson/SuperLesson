@@ -127,8 +127,8 @@ class Slides(UserList):
             )
         )
 
-        transcription = "\n".join(
-            [slide.transcription for slide in self.data[first : last + 1]]
+        transcription = " ".join(
+            [slide.transcription.strip() for slide in self.data[first : last + 1]]
         )
         assert end is not None
         if first > 0:
