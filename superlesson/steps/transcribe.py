@@ -84,10 +84,15 @@ class Transcribe:
         )
         logger.info("Replicate finished")
         assert isinstance(output, dict), "Expected a dict"
-        return [
-            Segment(segment["word"], segment["start"], segment["end"])
-            for segment in output["word_segments"]
-        ]
+        segments = []
+        for segment in output["word_segments"]:
+            if "start" in segment:
+                segments.append(
+                    Segment(segment["word"], segment["start"], segment["end"])
+                )
+            elif len(segments) != 0:
+                segments[-1].text += " " + segment["word"]
+        return segments
 
     @classmethod
     def _upload_file_to_s3(cls, path: Path) -> str:
