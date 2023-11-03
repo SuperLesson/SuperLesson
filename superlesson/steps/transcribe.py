@@ -73,7 +73,7 @@ class Transcribe:
             )
 
         bench_duration = datetime.now() - bench_start
-        logger.info(f"Transcription took {bench_duration}")
+        logger.info(f"Transcription took {bench_duration} to finish")
 
     @classmethod
     def _transcribe_with_replicate(cls, url: str) -> list[Segment]:
@@ -297,8 +297,6 @@ class Transcribe:
 
     @step(Step.improve, Step.merge)
     def improve_punctuation(self):
-        from openai import OpenAI, OpenAIError
-
         context = """The following is a transcription of a lecture.
         The transcription is complete, but it has formatting and punctuation mistakes.
         Fix ONLY the formatting and punctuation mistakes. Do not change the content.
@@ -309,13 +307,6 @@ class Transcribe:
         max_input_tokens = (4096 - self._count_tokens(context)) // 2 - margin
         logger.debug(f"Max input tokens: {max_input_tokens}")
 
-        try:
-            openai_client = OpenAI()
-        except OpenAIError as e:
-            raise Exception(
-                "Please review README.md for instructions on how to set up your OpenAI token"
-            ) from e
-
         logger.debug("Splitting into prompts")
         prompts = self._split_into_prompts(
             [slide.transcription for slide in self.slides],
@@ -324,38 +315,28 @@ class Transcribe:
 
         bench_start = datetime.now()
 
+        completions = self._complete_with_chatgpt(prompts, context)
+
+        bench_duration = datetime.now() - bench_start
+        logger.info(f"ChatGPT requests took {bench_duration} to finish")
+
         last_slide = 0
         improved_transcription = []
-        for prompt in prompts:
+        for prompt, completion in zip(prompts, completions):
+            text = prompt.body
+            similarity_ratio = self._calculate_difference(text, completion)
+            # different = 0 < similarity_ratio < 1 = same
+            if similarity_ratio < 0.40:
+                logger.info("The text was not improved by ChatGPT-3.5-turbo.")
+                logger.debug(f"Similarity: {similarity_ratio}")
+                logger.debug(f"ORIGINAL:\n{text}")
+                logger.debug(f"IMPROVED:\n{completion}")
+                continue
             if prompt.slide != last_slide:
                 self.slides[last_slide].transcription = " ".join(improved_transcription)
                 improved_transcription = []
                 last_slide = prompt.slide
-            completion = self._improve_text_with_chatgpt(
-                openai_client, prompt.body, context
-            )
             improved_transcription.append(completion)
-
-        bench_duration = datetime.now() - bench_start
-        logger.info(f"Transcription took {bench_duration}")
-
-    @classmethod
-    def _improve_text_with_chatgpt(cls, client, text, context):
-        improved_text = cls._complete_prompt(client, text, context)
-
-        if improved_text is None:
-            return text
-
-        similarity_ratio = cls._calculate_difference(text, improved_text)
-        # different = 0 < similarity_ratio < 1 = same
-        if similarity_ratio < 0.40 and len(text) > 15:
-            logger.info("The text was not improved by ChatGPT-3.5-turbo.")
-            logger.debug(f"Similarity: {similarity_ratio}")
-            logger.debug(f"ORIGINAL:\n{text}")
-            logger.debug(f"IMPROVED:\n{improved_text}")
-            return text
-        else:
-            return improved_text
 
     @staticmethod
     def _count_tokens(text: str) -> int:
@@ -431,6 +412,30 @@ class Transcribe:
         merged.append(" ".join(chunks[start:]))
 
         return merged
+
+    @classmethod
+    def _complete_with_chatgpt(cls, prompts: list[Prompt], context: str) -> list[str]:
+        from openai import OpenAI, OpenAIError
+
+        try:
+            client = OpenAI()
+        except OpenAIError as e:
+            raise Exception(
+                "Please review README.md for instructions on how to set up your OpenAI token"
+            ) from e
+
+        results = [
+            cls._complete_prompt(client, prompt.body, context) for prompt in prompts
+        ]
+
+        completions = []
+        for result in results:
+            if result is None:
+                break
+            completions.append(result)
+        logger.debug("ChatGPT completed prompt successfully")
+
+        return completions
 
     @classmethod
     def _complete_prompt(cls, client, prompt: str, context: str) -> Optional[str]:
