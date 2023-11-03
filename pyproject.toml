@@ -16,7 +16,7 @@ repository = "https://github.com/SuperLesson/SuperLesson"
 [tool.poetry.scripts]
 superlesson = "superlesson.cli:main"
 transcribe = "superlesson.cli:transcribe_step"
-tmarks = "superlesson.cli:tmarks_step"
+merge = "superlesson.cli:merge_step"
 verify = "superlesson.cli:verify_step"
 replace = "superlesson.cli:replace_step"
 improve = "superlesson.cli:improve_step"

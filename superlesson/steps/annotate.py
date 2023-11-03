@@ -18,7 +18,7 @@ class Annotate:
         self._lecture_notes = lecture_notes
         self.slides = slides
 
-    @Step.step(Step.enumerate_slides, Step.insert_tmarks)
+    @Step.step(Step.enumerate_slides, Step.merge_segments)
     def enumerate_slides_from_tframes(self):
         from pypdf import PdfReader
 

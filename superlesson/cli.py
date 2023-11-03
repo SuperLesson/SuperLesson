@@ -23,7 +23,7 @@ logger = logging.getLogger("superlesson")
 @unique
 class PseudoStep(Enum):
     transcribe = Step.transcribe
-    insert = Step.insert_tmarks
+    merge = Step.merge_segments
     enumerate = Step.enumerate_slides
     replace = Step.replace_words
     improve = Step.improve_punctuation
@@ -56,7 +56,7 @@ def main():
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError("Transcribing from audio is not implemented yet")
     transitions = Transitions(slides, lesson_files.transcription_source)
-    transitions.insert_tmarks()
+    transitions.merge_segments()
     input("Press Enter to continue...")
     transitions.verify_tbreaks_with_mpv()
     input("Press Enter to continue...")
@@ -205,9 +205,9 @@ def check_differences(lesson: str, prev: Step, next: Step):
     )
 
 
-def tmarks_step():
-    args, transitions = single_step_setup(Transitions)
-    transitions.insert_tmarks()
+def merge_step():
+    _, transitions = single_step_setup(Transitions)
+    transitions.merge_segments()
 
 
 def verify_step():

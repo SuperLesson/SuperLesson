@@ -49,7 +49,7 @@ poetry run superlesson [lesson-id]
 This will execute all the following steps:
 
 1. `transcribe`
-2. Insert `tmarks`
+2. `merge` segments using transition frames
 3. `verify` all transitions using MPV
 4. `enumerate` slides from tframes
 5. `replace` known bogus words

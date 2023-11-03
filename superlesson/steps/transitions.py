@@ -15,8 +15,8 @@ class Transitions:
         self._transcription_source = transcription_source
         self.slides = slides
 
-    @Step.step(Step.insert_tmarks, Step.transcribe)
-    def insert_tmarks(self):
+    @Step.step(Step.merge_segments, Step.transcribe)
+    def merge_segments(self):
         # TODO: use audio as source for transcription
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
@@ -92,7 +92,7 @@ class Transitions:
         ]  # convert to seconds
         return silences
 
-    @Step.step(Step.verify_tbreaks_with_mpv, Step.insert_tmarks)
+    @Step.step(Step.verify_tbreaks_with_mpv, Step.merge_segments)
     def verify_tbreaks_with_mpv(self):
         # TODO: parameterize time translation
         time_translation = 6
