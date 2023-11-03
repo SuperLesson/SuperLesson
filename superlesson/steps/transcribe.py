@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import time
@@ -5,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Optional
+from typing import cast, Optional
 
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
@@ -315,7 +316,7 @@ class Transcribe:
 
         bench_start = datetime.now()
 
-        completions = self._complete_with_chatgpt(prompts, context)
+        completions = asyncio.run(self._complete_with_chatgpt(prompts, context))
 
         bench_duration = datetime.now() - bench_start
         logger.info(f"ChatGPT requests took {bench_duration} to finish")
@@ -414,31 +415,36 @@ class Transcribe:
         return merged
 
     @classmethod
-    def _complete_with_chatgpt(cls, prompts: list[Prompt], context: str) -> list[str]:
-        from openai import OpenAI, OpenAIError
+    async def _complete_with_chatgpt(
+        cls, prompts: list[Prompt], context: str
+    ) -> list[str]:
+        from openai import AsyncOpenAI, OpenAIError
 
         try:
-            client = OpenAI()
+            client = AsyncOpenAI()
         except OpenAIError as e:
             raise Exception(
                 "Please review README.md for instructions on how to set up your OpenAI token"
             ) from e
 
-        results = [
-            cls._complete_prompt(client, prompt.body, context) for prompt in prompts
+        tasks = [
+            asyncio.create_task(cls._complete_prompt(client, prompt.body, context))
+            for prompt in prompts
         ]
 
+        results = await asyncio.gather(*tasks)
         completions = []
         for result in results:
             if result is None:
                 break
+            cast(str, result)
             completions.append(result)
         logger.debug("ChatGPT completed prompt successfully")
 
         return completions
 
     @classmethod
-    def _complete_prompt(cls, client, prompt: str, context: str) -> Optional[str]:
+    async def _complete_prompt(cls, client, prompt: str, context: str) -> Optional[str]:
         import openai
 
         messages = [
@@ -447,7 +453,7 @@ class Transcribe:
         ]
         logger.debug("Completing prompt: %s", prompt)
         try:
-            completion = client.chat.completions.create(
+            completion = await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 # model="gpt-4",
                 messages=messages,
