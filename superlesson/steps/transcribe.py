@@ -7,6 +7,9 @@ from superlesson.storage import LessonFile, Slide, Slides
 from .step import Step
 
 
+logger = logging.getLogger("superlesson")
+
+
 class Transcribe:
     """Class to transcribe a lesson."""
 
@@ -35,19 +38,19 @@ class Transcribe:
             vad_filter=True,
         )
 
-        logging.info(
+        logger.info(
             f"Detected language {info.language} with probability {info.language_probability}"
         )
         segments = self._run_with_pbar(segments, info)
 
         for segment in segments:
             self.slides.append(Slide(segment.text, (segment.start, segment.end)))
-            logging.info(
+            logger.info(
                 "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
             )
 
         bench_duration = datetime.now() - bench_start
-        logging.info(f"Transcription took {bench_duration}")
+        logger.info(f"Transcription took {bench_duration}")
 
     @staticmethod
     def _has_nvidia_gpu():
@@ -89,7 +92,7 @@ class Transcribe:
             transcription_segments = []
             for segment in segments:
                 transcription_segments.append(segment)
-                logging.info(
+                logger.info(
                     "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
                 )
                 timestamp_last = round(segment.end)
@@ -139,7 +142,7 @@ class Transcribe:
     def replace_words(self):
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
-            logging.warning(
+            logger.warning(
                 f"{data_folder} doesn't exist, so no replacements will be done"
             )
             return
@@ -197,10 +200,10 @@ class Transcribe:
                 )
                 continue
 
-            logging.info(
+            logger.info(
                 "The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt."
             )
-            logging.debug(text[:50])
+            logger.debug(text[:50])
 
             gpt_chunks = []
             for chunk in self._split_text(text, max_input_tokens):
@@ -212,7 +215,7 @@ class Transcribe:
             slide.transcription = " ".join(gpt_chunks)
 
         bench_duration = datetime.now() - bench_start
-        logging.info(f"Transcription took {bench_duration}")
+        logger.info(f"Transcription took {bench_duration}")
 
     @staticmethod
     def _load_openai_key():
@@ -238,10 +241,10 @@ class Transcribe:
         similarity_ratio = cls._calculate_difference(text, improved_text)
         # different = 0 < similarity_ratio < 1 = same
         if similarity_ratio < 0.40 and len(text) > 15:
-            logging.info("The text was not improved by ChatGPT-3.5-turbo.")
-            logging.debug(f"Similarity: {similarity_ratio}")
-            logging.debug(f"ORIGINAL:\n{text}")
-            logging.debug(f"IMPROVED:\n{improved_text}")
+            logger.info("The text was not improved by ChatGPT-3.5-turbo.")
+            logger.debug(f"Similarity: {similarity_ratio}")
+            logger.debug(f"ORIGINAL:\n{text}")
+            logger.debug(f"IMPROVED:\n{improved_text}")
             return text
         else:
             return improved_text
@@ -318,13 +321,13 @@ class Transcribe:
     def _try_chat_completion_until_successful(cls, messages, max_tries=5):
         for tries in range(max_tries):
             try:
-                logging.info("Asking GPT to improve punctuation")
+                logger.info("Asking GPT to improve punctuation")
                 result = cls._ai(messages, 0.1)
                 return result["choices"][0]["message"]["content"]
             except Exception as e:
-                logging.info(f"Retrying {tries} out of {max_tries}")
-                logging.debug("Error:", e)
-                logging.debug("Message:", messages[1]["content"][:50])
+                logger.info(f"Retrying {tries} out of {max_tries}")
+                logger.debug("Error:", e)
+                logger.debug("Message:", messages[1]["content"][:50])
                 time.sleep(20.5)
 
     # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)

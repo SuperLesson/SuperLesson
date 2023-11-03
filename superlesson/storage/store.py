@@ -9,6 +9,9 @@ from typing import Any, List, Optional, Tuple
 from superlesson.steps.step import Step
 
 
+logger = logging.getLogger("superlesson")
+
+
 class Format(Enum):
     json = "json"
     txt = "txt"
@@ -75,7 +78,7 @@ class Store:
                 try:
                     data = json_lib.load(f)
                 except json_lib.decoder.JSONDecodeError:
-                    logging.error(
+                    logger.error(
                         f"Failed to load {step.value} from json. Try running the step again."
                     )
 
@@ -112,15 +115,15 @@ class Store:
     def save_json(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.json)
         if path is not None:
-            logging.info(f"Saving {step.value} as json")
-            logging.debug(f"to {path}")
+            logger.info(f"Saving {step.value} as json")
+            logger.debug(f"to {path}")
             with open(str(path), "w") as f:
                 json_lib.dump(data, f)
 
     def save_txt(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.txt)
         if path is not None:
-            logging.info(f"Saving {step.value} as txt")
-            logging.debug(f"to {path}")
+            logger.info(f"Saving {step.value} as txt")
+            logger.debug(f"to {path}")
             with open(str(path), "w") as f:
                 f.write(data)

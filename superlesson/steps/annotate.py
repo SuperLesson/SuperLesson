@@ -8,6 +8,9 @@ from superlesson.storage import LessonFile, Slides
 from .step import Step
 
 
+logger = logging.getLogger("superlesson")
+
+
 class Annotate:
     """Class to annotate a lesson."""
 
@@ -39,7 +42,7 @@ class Annotate:
             if 0 < number < max_slide_number + 1:
                 return number
 
-            logging.warning(
+            logger.warning(
                 f"There's no such slide number: {number} (should be between 1 and {max_slide_number})"
             )
             return default
@@ -66,12 +69,12 @@ class Annotate:
         import subprocess
 
         if not path.exists():
-            logging.warning(f"File {path} doesn't exist")
+            logger.warning(f"File {path} doesn't exist")
             return 1
 
         ret_code = subprocess.call(["kitty", "+kitten", "icat", str(path)])
         if ret_code != 0:
-            logging.warning(f"Error opening {path}")
+            logger.warning(f"Error opening {path}")
 
         return ret_code
 
@@ -83,7 +86,7 @@ class Annotate:
 
         # pt -> inch
         slide_width = pdf.pages[0].mediabox.width / 72
-        logging.debug(f"Slide width: {slide_width}")
+        logger.debug(f"Slide width: {slide_width}")
         output = self._transcription_to_pdf(width=slide_width)
 
         trans = PdfReader(output)
@@ -94,13 +97,13 @@ class Annotate:
 
             if number is None:
                 continue
-            logging.debug(f"Adding slide {number} to annotated PDF")
+            logger.debug(f"Adding slide {number} to annotated PDF")
             merger.append(fileobj=pdf, pages=(number, number + 1))
-            logging.debug(f"Adding transcription to slide {i}")
+            logger.debug(f"Adding transcription to slide {i}")
             merger.append(fileobj=trans, pages=(i, i + 1))
 
         merger.write(output)
-        logging.info(f"Annotated PDF saved as {output}")
+        logger.info(f"Annotated PDF saved as {output}")
 
     @staticmethod
     def emphasize(text: str) -> str:
@@ -130,16 +133,16 @@ class Annotate:
             return last_index, word_count
 
         current_index, words_in_current = text_before_dots(current, True)
-        logging.debug(f"Fade in at word {words_in_current}")
+        logger.debug(f"Fade in at word {words_in_current}")
 
         next_index, words_in_next = text_before_dots(next, False)
-        logging.debug(f"Fade out at word {words_in_next}")
+        logger.debug(f"Fade out at word {words_in_next}")
 
         current_emphasized = cls.emphasize(current[-current_index:] + " \u21E2")
-        logging.debug(f"Fade in text: {current_emphasized}")
+        logger.debug(f"Fade in text: {current_emphasized}")
         current = current[:-current_index] + current_emphasized
         next_emphasized = cls.emphasize("\u21E2 " + next[:next_index])
-        logging.debug(f"Fade out text: {next_emphasized}")
+        logger.debug(f"Fade out text: {next_emphasized}")
         next = next_emphasized + next[next_index:]
 
         return current, next
@@ -198,7 +201,7 @@ class Annotate:
                 )
             )
             temp_file_name = f.name
-            logging.debug(f"Typst temp file saved as {temp_file_name}")
+            logger.debug(f"Typst temp file saved as {temp_file_name}")
         output = os.path.join(self._lecture_notes.path, "annotations.pdf")
         typst.compile(temp_file_name, output=output)
         return output

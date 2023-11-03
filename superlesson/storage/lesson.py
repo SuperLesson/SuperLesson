@@ -9,6 +9,9 @@ from typing import List, Optional
 from .store import Store
 
 
+logger = logging.getLogger("superlesson")
+
+
 class FileType(Enum):
     video = "video"
     audio = "audio"
@@ -78,7 +81,7 @@ class LessonFiles:
             else:
                 raise ValueError(f"Lesson {lesson} not found")
 
-        logging.debug(f"Lesson root: {self.lesson_root}")
+        logger.debug(f"Lesson root: {self.lesson_root}")
 
         self._files: List[LessonFile] = []
         self._transcribe_with = transcribe_with
@@ -92,7 +95,7 @@ class LessonFiles:
         if len(self._files) > 0:
             return self._files
 
-        logging.info("Searching for files...")
+        logger.info("Searching for files...")
         ignored = list(Store.txt_files())
         ignored.append("annotations.pdf")
         for file in self.lesson_root.iterdir():
@@ -100,7 +103,7 @@ class LessonFiles:
                 continue
             try:
                 self._files.append(LessonFile(file.name, self.lesson_root))
-                logging.debug(f"Found file: {file}")
+                logger.debug(f"Found file: {file}")
             except ValueError:
                 pass
 
@@ -119,7 +122,7 @@ class LessonFiles:
                 raise ValueError(f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = files[0]
 
-        logging.debug(f"Transcription source: {self._transcription_source}")
+        logger.debug(f"Transcription source: {self._transcription_source}")
         return self._transcription_source
 
     @property
@@ -142,7 +145,7 @@ class LessonFiles:
             if self._lecture_notes is None:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
 
-        logging.debug(f"Lecture notes: {self._lecture_notes}")
+        logger.debug(f"Lecture notes: {self._lecture_notes}")
         return self._lecture_notes
 
     def _find_lesson_files(
