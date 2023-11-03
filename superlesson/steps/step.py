@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from enum import Enum
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional
 
 
 logger = logging.getLogger("superlesson")
@@ -22,13 +23,12 @@ class Step(Enum):
         return list([s for s in Step])
 
     @classmethod
-    def get_last(cls, step: Step) -> Iterable[Step]:
+    def get_last(cls, step: Step) -> Sequence[Step]:
         if step is cls.transcribe:
-            return
+            return []
         steps = cls.to_list()
         index = steps.index(step) - 1
-        for s in steps[index::-1]:
-            yield s
+        return steps[index::-1]
 
     def __lt__(self, other: Step) -> bool:
         steps = self.to_list()
