@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from textwrap import dedent, fill
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from superlesson.steps.step import Step
 
@@ -45,7 +45,7 @@ class Slide:
     number: Optional[int] = None
     merged: bool = False
 
-    def __init__(self, transcription: str, timeframe: Tuple[float, float]):
+    def __init__(self, transcription: str, timeframe: tuple[float, float]):
         self.transcription = transcription
         self.timeframe = TimeFrame(*timeframe)
 
@@ -151,7 +151,7 @@ class Slides(UserList):
             logger.debug("No data to load")
             return Loaded.none
         assert obj is not None, "Slides object should be populated"
-        data: List[Slide] = []
+        data: list[Slide] = []
         for i in range(len(obj)):
             data.append(self._load_slide(obj[i]))
         self.data = data

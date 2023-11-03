@@ -1,7 +1,6 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import List
 
 from superlesson.storage import LessonFile, Slides
 
@@ -49,7 +48,7 @@ class Transitions:
         for i, path in enumerate(png_paths):
             self.slides[i].png_path = path
 
-    def _get_png_paths(self) -> List[Path]:
+    def _get_png_paths(self) -> list[Path]:
         tt_directory = self._transcription_source.path / "tframes"
         png_paths = []
         for file in tt_directory.iterdir():
@@ -58,7 +57,7 @@ class Transitions:
 
         return png_paths
 
-    def _get_relative_times(self, png_names: List[str]) -> List[datetime.timedelta]:
+    def _get_relative_times(self, png_names: list[str]) -> list[datetime.timedelta]:
         import re
 
         def to_timedelta(h, m, s):
