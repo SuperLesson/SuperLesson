@@ -32,7 +32,13 @@ class Transitions:
             logger.info(f"Extracting audio to {audio_path}")
             self._extract_audio(video_path, audio_path)
 
-        silences = self._detect_silence(audio_path)
+        silences = []
+        for threshold_offset in range(-6, -10, -2):
+            silences = self._detect_silence(audio_path, threshold_offset)
+            if len(silences) > 0:
+                logger.debug("Found silences: %s", silences)
+                break
+            logger.debug("Found no silences with threshold offset %s", threshold_offset)
 
         if len(silences) != 0:
             improved = self._improve_tts_with_silences(timestamps, silences, 2.0)
@@ -86,9 +92,7 @@ class Transitions:
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
     @staticmethod
-    def _detect_silence(
-        audio_file: Path, threshold_offset: int = -10
-    ) -> list[TimeFrame]:
+    def _detect_silence(audio_file: Path, threshold_offset: int) -> list[TimeFrame]:
         logger.info("Detecting silence")
 
         import pydub
