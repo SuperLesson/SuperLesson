@@ -22,8 +22,7 @@ class Transitions:
         audio_path = video_path.with_suffix(".wav")
 
         png_paths = self._get_png_paths()
-        relative_times = self._get_relative_times([path.name for path in png_paths])
-        total_seconds = [_time.total_seconds() for _time in relative_times]
+        timestamps = self._get_ttimes_from_tframes([path.name for path in png_paths])
 
         if audio_path.exists():
             logging.warning("Audio file already exists")
@@ -33,14 +32,14 @@ class Transitions:
 
         silences = self._detect_silence(audio_path)
 
-        if len(silences) == 0:
-            improved_transition_times = total_seconds
+        if len(silences) != 0:
+            improved = self._improve_tt(timestamps, silences, 2.0)
         else:
-            improved_transition_times = self._improve_tt(total_seconds, silences, 2.0)
+            logger.debug("Found no silences")
+            improved = timestamps
 
-        for i in range(len(improved_transition_times)):
-            end = improved_transition_times[i]
-            self.slides.merge(end)
+        for time in improved:
+            self.slides.merge(time)
 
         # use this to merge the last slides
         self.slides.merge()
@@ -57,7 +56,7 @@ class Transitions:
 
         return png_paths
 
-    def _get_relative_times(self, png_names: list[str]) -> list[datetime.timedelta]:
+    def _get_ttimes_from_tframes(self, png_names: list[str]) -> list[float]:
         import re
 
         def to_timedelta(h, m, s):
@@ -71,7 +70,11 @@ class Transitions:
             timestamp = to_timedelta(*match.group(1).split("-"))
             timestamps.append(timestamp)
 
-        return sorted(timestamps)
+        timestamps.sort()
+
+        logger.debug("Transition times: %s", [str(time) for time in timestamps])
+
+        return [time.total_seconds() for time in timestamps]
 
     # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
     # possible alternative: silero-vad, which is already in use by whisper
