@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import Optional
 
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
@@ -298,13 +299,9 @@ class Transcribe:
         The output must be only the transcription, without any other text.
         """
 
-        sys_tokens = self._count_tokens(context)
-        sys_message = {"role": "system", "content": context}
-
         margin = 20  # to avoid errors
-        max_input_tokens = (4096 - sys_tokens) // 2 - margin
-
-        bench_start = datetime.now()
+        max_input_tokens = (4096 - self._count_tokens(context)) // 2 - margin
+        logger.debug(f"Max input tokens: {max_input_tokens}")
 
         try:
             openai_client = OpenAI()
@@ -313,24 +310,13 @@ class Transcribe:
                 "Please review README.md for instructions on how to set up your OpenAI token"
             ) from e
 
+        bench_start = datetime.now()
+
         for slide in self.slides:
-            text = slide.transcription
-            total_tokens = self._count_tokens(text)
-            if total_tokens <= max_input_tokens:
-                slide.transcription = self._improve_text_with_chatgpt(
-                    openai_client, text, sys_message
-                )
-                continue
-
-            logger.info(
-                "The text must be broken into pieces to fit ChatGPT-3.5-turbo prompt."
-            )
-            logger.debug(text[:50])
-
             gpt_chunks = []
             for chunk in self._split_into_chunks(slide.transcription, max_input_tokens):
                 gpt_chunks.append(
-                    self._improve_text_with_chatgpt(openai_client, chunk, sys_message)
+                    self._improve_text_with_chatgpt(openai_client, chunk, context)
                 )
             slide.transcription = " ".join(gpt_chunks)
 
@@ -338,12 +324,8 @@ class Transcribe:
         logger.info(f"Transcription took {bench_duration}")
 
     @classmethod
-    def _improve_text_with_chatgpt(cls, client, text, sys_message):
-        messages = [
-            sys_message,
-            {"role": "user", "content": text},
-        ]
-        improved_text = cls._try_chat_completion_until_successful(client, messages)
+    def _improve_text_with_chatgpt(cls, client, text, context):
+        improved_text = cls._complete_prompt(client, text, context)
 
         if improved_text is None:
             return text
@@ -426,33 +408,27 @@ class Transcribe:
 
         return merged
 
-    @staticmethod
-    def _ai(client, messages, temperature=0):
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            # model="gpt-4",
-            messages=messages,
-            n=1,
-            temperature=temperature,
-        )
-        return response
-
-    # error handling is not correct
     @classmethod
-    def _try_chat_completion_until_successful(cls, client, messages, max_tries=5):
-        for tries in range(max_tries):
-            try:
-                logger.info("Asking GPT to improve punctuation")
-                completion = cls._ai(client, messages, 0.1)
-                print("output")
-                return completion.choices[0].message.content
-            except Exception as e:
-                logger.info(f"Retrying {tries} out of {max_tries}")
-                logger.debug("Error:", e)
-                logger.debug("Message:", messages[1]["content"][:50])
-                time.sleep(20.5)
+    def _complete_prompt(cls, client, prompt: str, context: str) -> Optional[str]:
+        import openai
 
-    # REFUSE GPT HALLUCINATIONS (FALTA TESTAR)
+        messages = [
+            {"role": "system", "content": context},
+            {"role": "user", "content": prompt},
+        ]
+        logger.debug("Completing prompt: %s", prompt)
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                # model="gpt-4",
+                messages=messages,
+                n=1,
+                temperature=0.1,
+            )
+            return completion.choices[0].message.content
+        except openai.RateLimitError:
+            return None
+
     @staticmethod
     def _calculate_difference(paragraph1, paragraph2):
         import difflib
