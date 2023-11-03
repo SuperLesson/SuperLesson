@@ -3,6 +3,8 @@ import logging
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
+from superlesson.storage.slide import TimeFrame
+from superlesson.storage.utils import seconds_to_timestamp
 
 from .step import Step
 
@@ -25,9 +27,9 @@ class Transitions:
         timestamps = self._get_ttimes_from_tframes([path.name for path in png_paths])
 
         if audio_path.exists():
-            logging.warning("Audio file already exists")
+            logger.warning("Audio file already exists")
         else:
-            logging.info(f"Extracting audio to {audio_path}")
+            logger.info(f"Extracting audio to {audio_path}")
             self._extract_audio(video_path, audio_path)
 
         silences = self._detect_silence(audio_path)
@@ -67,14 +69,16 @@ class Transitions:
         for name in png_names:
             match = re.search(r"_(\d{2}-\d{2}-\d{2})\.png", name)
             assert match is not None
-            timestamp = to_timedelta(*match.group(1).split("-"))
+            timestamp = to_timedelta(*match.group(1).split("-")).total_seconds()
             timestamps.append(timestamp)
 
         timestamps.sort()
 
-        logger.debug("Transition times: %s", [str(time) for time in timestamps])
+        logger.debug(
+            "Transition times: %s", [seconds_to_timestamp(time) for time in timestamps]
+        )
 
-        return [time.total_seconds() for time in timestamps]
+        return timestamps
 
     # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
     # possible alternative: silero-vad, which is already in use by whisper
@@ -82,16 +86,27 @@ class Transitions:
     # look for differente ways to find silence_thresh programatically.
     # with the code bellow I have to make guesses of threshold_factor
     @staticmethod
-    def _detect_silence(audio_file, silence_threshold_factor=10):
-        from pydub import AudioSegment, silence
+    def _detect_silence(
+        audio_file: Path, threshold_offset: int = -10
+    ) -> list[TimeFrame]:
+        logger.info("Detecting silence")
 
-        audio = AudioSegment.from_wav(audio_file)
-        silence_thresh = audio.dBFS - silence_threshold_factor
-        silences = silence.detect_silence(
-            audio, min_silence_len=800, silence_thresh=silence_thresh, seek_step=1
+        import pydub
+
+        audio = pydub.AudioSegment.from_wav(audio_file)
+        logger.debug("Audio duration: %s", seconds_to_timestamp(audio.duration_seconds))
+
+        silence_thresh = audio.dBFS + threshold_offset
+        logger.info("Looking for silences using threshold %s", silence_thresh)
+
+        silences = pydub.silence.detect_silence(
+            audio,
+            min_silence_len=800,
+            silence_thresh=silence_thresh,
+            seek_step=1,
         )
         silences = [
-            ((start / 1000), (stop / 1000)) for start, stop in silences
+            TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences
         ]  # convert to seconds
         return silences
 
@@ -134,46 +149,59 @@ class Transitions:
         command = f"ffmpeg -loglevel quiet -i {input_file} -vn -acodec {audio_codec} -ac {channels} -ar {sample_rate} {output_file}"
         subprocess.call(command, shell=True, stdout=subprocess.DEVNULL)
 
-    # TRY TO FIND NEAREST SILENCE. IF IT CAN`T FIND, GO BACK TO THE ORIGINAL TT
-    @staticmethod
-    def _nearest(l, K):
-        return sorted(l, key=lambda i: abs(i - K))[0]
-
     @classmethod
     def _improve_tts_with_silences(
         cls,
         timestamps: list[float],
-        silences: list[tuple[float, float]],
+        silences: list[TimeFrame],
         threshold: float,
     ) -> list[float]:
         logger.info("Improving transition times")
 
         improved = timestamps.copy()
 
+        def format_diff(start, end):
+            diff = end - start
+            sign = "+" if diff > 0 else "-"
+            return f"{sign}{abs(diff):.3f}"
+
         si = 0
         ti = 0
         while ti < len(timestamps) and si < len(silences):
-            silence_start, silence_end = silences[si]
+            silence = silences[si]
             time = timestamps[ti]
-            if silence_start < time < silence_end:
+            if silence.start < time < silence.end:
                 ti += 1
-            elif silence_end < time:
+            elif silence.end < time:
                 # teacher speaks before the slide changes
-                if time - silence_end < threshold:
-                    improved[ti] = silence_end
+                if time - silence.end < threshold:
+                    improved[ti] = silence.end
+                    logger.debug(
+                        "Replaced transition time %s with %s (%s)",
+                        seconds_to_timestamp(time),
+                        seconds_to_timestamp(silence.end),
+                        format_diff(time, silence.end),
+                    )
+                    # there probably isn't another timestamp that fits here
                     ti += 1
                 si += 1
-            elif time < silence_start:
+            elif time < silence.start:
                 # teacher silent after the slide changes
-                if silence_start - time < threshold:
-                    improved[ti] = silence_start
+                if silence.start - time < threshold:
+                    improved[ti] = silence.start
+                    logger.debug(
+                        "Replaced transition time %s with %s (%s)",
+                        seconds_to_timestamp(time),
+                        seconds_to_timestamp(silence.start),
+                        format_diff(time, silence.start),
+                    )
                 ti += 1
 
         if improved != timestamps:
             logger.info("Improved transition times")
             logger.debug(
                 "%s",
-                [str(datetime.timedelta(seconds=time)) for time in improved],
+                [seconds_to_timestamp(time) for time in improved],
             )
 
         return improved

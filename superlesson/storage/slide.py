@@ -1,5 +1,5 @@
 import logging
-from collections import UserList
+from collections import namedtuple, UserList
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -9,32 +9,13 @@ from typing import Optional
 from superlesson.steps.step import Step
 
 from .store import Loaded, Store
+from .utils import timeframe_to_timestamp
 
 
 logger = logging.getLogger("superlesson")
 
 
-@dataclass
-class TimeFrame:
-    start: timedelta
-    end: timedelta
-
-    def __init__(self, start: float, end: float):
-        self.start = timedelta(seconds=start)
-        self.end = timedelta(seconds=end)
-
-    def to_dict(self):
-        return {
-            "start": self.start.total_seconds(),
-            "end": self.end.total_seconds(),
-        }
-
-    @staticmethod
-    def _repr_time(time: timedelta) -> str:
-        return str(time).split(".")[0]
-
-    def __repr__(self):
-        return f"{self._repr_time(self.start)} - {self._repr_time(self.end)}"
+TimeFrame = namedtuple("TimeFrame", ["start", "end"])
 
 
 @dataclass
@@ -45,20 +26,23 @@ class Slide:
     number: Optional[int] = None
     merged: bool = False
 
-    def __init__(self, transcription: str, timeframe: tuple[float, float]):
+    def __init__(self, transcription: str, timeframe: TimeFrame):
         self.transcription = transcription
-        self.timeframe = TimeFrame(*timeframe)
+        self.timeframe = timeframe
 
     def to_dict(self):
         return {
             "transcription": self.transcription,
-            "timeframe": self.timeframe.to_dict(),
+            "timeframe": {
+                "start": self.timeframe.start,
+                "end": self.timeframe.end,
+            },
             "png_path": str(self.png_path),
             "number": self.number,
         }
 
     def __repr__(self):
-        return f"====== SLIDE {self.number} ({self.timeframe}) ======\n{fill(self.transcription, width=120)}"
+        return f"====== SLIDE {self.number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{fill(self.transcription, width=120)}"
 
 
 class Slides(UserList):
@@ -74,7 +58,7 @@ class Slides(UserList):
         start, end = slide_obj["timeframe"]["start"], slide_obj["timeframe"]["end"]
         assert isinstance(start, float), "Couldn't find timestamps"
         start, end = float(start), float(end)
-        slide = Slide(slide_obj["transcription"], (start, end))
+        slide = Slide(slide_obj["transcription"], TimeFrame(start, end))
         png_path = slide_obj["png_path"]
         if png_path is not None:
             slide.png_path = Path(png_path)
@@ -97,22 +81,22 @@ class Slides(UserList):
         if end is not None:
             for i in range(len(self.data)):
                 slide = self.data[i]
-                if slide.timeframe.end.total_seconds() >= end:
+                if slide.timeframe.end >= end:
                     if i != 0:
                         last = i - 1
                     else:
                         last = i
                     break
         else:
-            end = self.data[last].timeframe.end.total_seconds()
+            end = self.data[last].timeframe.end
 
         if first == last:
             logger.debug(
                 dedent(
                     f"""
                 Can't merge slide {first} with itself:
-                    First matched: {self.data[first].timeframe}
-                    Last matched: {self.data[last].timeframe}
+                    First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
+                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}
                 """
                 )
             )
@@ -122,8 +106,8 @@ class Slides(UserList):
         logger.debug(
             dedent(
                 f"""
-                First matched: {self.data[first].timeframe}
-                Last matched: {self.data[last].timeframe}
+                First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
+                Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}
             """
             )
         )
@@ -133,10 +117,10 @@ class Slides(UserList):
         )
         assert end is not None
         if first > 0:
-            start = self.data[first - 1].timeframe.end.total_seconds()
+            start = self.data[first - 1].timeframe.end
         else:
-            start = self.data[0].timeframe.start.total_seconds()
-        new_slide = Slide(transcription, (start, end))
+            start = self.data[0].timeframe.start
+        new_slide = Slide(transcription, TimeFrame(start, end))
         new_slide.merged = True
         self.data = self.data[:first] + [new_slide] + self.data[last + 1 :]
 
@@ -177,5 +161,5 @@ class Slides(UserList):
                 return
             if self._always_export_txt or step is Step.improve_punctuation:
                 self._store.save_txt(
-                    step, "\n".join([str(slide) + "\n" for slide in self.data])
+                    step, "\n".join([repr(slide) + "\n" for slide in self.data])
                 )
