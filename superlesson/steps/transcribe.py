@@ -328,7 +328,7 @@ class Transcribe:
             logger.debug(text[:50])
 
             gpt_chunks = []
-            for chunk in self._split_text(slide.transcription, max_input_tokens):
+            for chunk in self._split_into_chunks(slide.transcription, max_input_tokens):
                 gpt_chunks.append(
                     self._improve_text_with_chatgpt(openai_client, chunk, sys_message)
                 )
@@ -369,44 +369,18 @@ class Transcribe:
         return len(encoding.encode(text)) + tokens_per_message
 
     @classmethod
-    def _split_text(cls, text, max_tokens):
-        periods = cls._split_in_periods(text)
-        if len(periods) > 1:
-            chunks = []
-            total_tokens = 0
-            start = 0
-            for i in range(len(periods)):
-                tokens = cls._count_tokens(periods[i])
-                if tokens > max_tokens:
-                    if start != i:
-                        chunks.append(". ".join(periods[start:i]))
-                    chunks.extend(cls._split_text(periods[i], max_tokens))
-                    start = i + 1
-                    total_tokens = 0
-                elif total_tokens + tokens > max_tokens:
-                    chunks.append(". ".join(periods[start:i]))
-                    start = i
-                    total_tokens = tokens
-                else:
-                    total_tokens += tokens
-
-            return chunks
-
-        words = text.split()
+    def _split_into_chunks(cls, transcription: str, max_tokens: int) -> list[str]:
         chunks = []
-        start = 0
-        total_tokens = 0
-        for i in range(len(words)):
-            tokens = cls._count_tokens(words[i])
-            if total_tokens + tokens > max_tokens:
-                chunks.append(" ".join(words[start:i]))
-                start = i
-                total_tokens = tokens
+        for period in cls._split_in_periods(transcription):
+            tokens = cls._count_tokens(period)
+            if tokens > max_tokens:
+                logger.debug(f"Splitting text with {tokens} tokens")
+                words = period.split()
+                chunks.extend(cls._merge_chunks(words, max_tokens))
             else:
-                total_tokens += tokens
-        chunks.append(" ".join(words[start:]))
+                chunks.append(period)
 
-        return chunks
+        return cls._merge_chunks(chunks, max_tokens)
 
     @classmethod
     def _split_in_periods(cls, text: str) -> list[str]:
@@ -433,6 +407,24 @@ class Transcribe:
             periods.append(splits[-1])
 
         return periods
+
+    @classmethod
+    def _merge_chunks(cls, chunks: list[str], max_tokens: int) -> list[str]:
+        merged = []
+        total_tokens = 0
+        start = 0
+        for i, chunk in enumerate(chunks):
+            tokens = cls._count_tokens(chunk)
+            if total_tokens + tokens > max_tokens:
+                merged.append(" ".join(chunks[start:i]))
+
+                start = i
+                total_tokens = tokens
+            else:
+                total_tokens += tokens
+        merged.append(" ".join(chunks[start:]))
+
+        return merged
 
     @staticmethod
     def _ai(client, messages, temperature=0):
