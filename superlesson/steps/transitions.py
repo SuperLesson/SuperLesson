@@ -4,7 +4,7 @@ from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame
-from superlesson.storage.utils import seconds_to_timestamp
+from superlesson.storage.utils import seconds_to_timestamp, timeframe_to_timestamp
 
 from .step import Step
 
@@ -18,7 +18,7 @@ class Transitions:
         self.slides = slides
 
     @Step.step(Step.merge_segments, Step.transcribe)
-    def merge_segments(self):
+    def merge_segments(self, using_silences: bool):
         # TODO: use audio as source for transcription
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
@@ -32,18 +32,23 @@ class Transitions:
             logger.info(f"Extracting audio to {audio_path}")
             self._extract_audio(video_path, audio_path)
 
-        silences = []
-        for threshold_offset in range(-6, -10, -2):
-            silences = self._detect_silence(audio_path, threshold_offset)
-            if len(silences) > 0:
-                logger.debug("Found silences: %s", silences)
-                break
-            logger.debug("Found no silences with threshold offset %s", threshold_offset)
-
-        if len(silences) != 0:
-            improved = self._improve_tts_with_silences(timestamps, silences, 2.0)
+        if using_silences:
+            references = []
+            for threshold_offset in range(-6, -10, -2):
+                references = self._detect_silence(audio_path, threshold_offset)
+                if len(references) > 0:
+                    logger.debug("Found silences: %s", references)
+                    break
+                logger.debug(
+                    "Found no silences with threshold offset %s", threshold_offset
+                )
         else:
-            logger.debug("Found no silences")
+            references = self._get_period_end_times()
+
+        if len(references) != 0:
+            improved = self._improve_tts_with_references(timestamps, references, 2.0)
+        else:
+            logger.warning("No references found, skipping improvement")
             improved = timestamps
 
         for time in improved:
@@ -85,6 +90,20 @@ class Transitions:
         )
 
         return timestamps
+
+    def _get_period_end_times(self) -> list[TimeFrame]:
+        punctuation = [".", "?", "!"]
+
+        period_end_times = []
+        for slide in self.slides:
+            if slide.transcription[-1] in punctuation:
+                period_end_times.append(slide.timeframe)
+
+        logger.debug(
+            "Period end times: %s",
+            [timeframe_to_timestamp(end_time) for end_time in period_end_times],
+        )
+        return period_end_times
 
     # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
     # possible alternative: silero-vad, which is already in use by whisper
@@ -154,11 +173,8 @@ class Transitions:
         subprocess.call(command, shell=True, stdout=subprocess.DEVNULL)
 
     @classmethod
-    def _improve_tts_with_silences(
-        cls,
-        timestamps: list[float],
-        silences: list[TimeFrame],
-        threshold: float,
+    def _improve_tts_with_references(
+        cls, timestamps: list[float], references: list[TimeFrame], threshold: float
     ) -> list[float]:
         logger.info("Improving transition times")
 
@@ -171,33 +187,35 @@ class Transitions:
 
         si = 0
         ti = 0
-        while ti < len(timestamps) and si < len(silences):
-            silence = silences[si]
+        while ti < len(timestamps) and si < len(references):
+            ref = references[si]
             time = timestamps[ti]
-            if silence.start < time < silence.end:
+            if ref.start < time < ref.end:
+                # long silences shouldn't be a problem
+                improved[ti] = ref.end
                 ti += 1
-            elif silence.end < time:
+            elif ref.end < time:
                 # teacher speaks before the slide changes
-                if time - silence.end < threshold:
-                    improved[ti] = silence.end
+                if time - ref.end < threshold:
+                    improved[ti] = ref.end
                     logger.debug(
                         "Replaced transition time %s with %s (%s)",
                         seconds_to_timestamp(time),
-                        seconds_to_timestamp(silence.end),
-                        format_diff(time, silence.end),
+                        seconds_to_timestamp(ref.end),
+                        format_diff(time, ref.end),
                     )
                     # there probably isn't another timestamp that fits here
                     ti += 1
                 si += 1
-            elif time < silence.start:
+            elif time < ref.start:
                 # teacher silent after the slide changes
-                if silence.start - time < threshold:
-                    improved[ti] = silence.start
+                if ref.start - time < threshold:
+                    improved[ti] = ref.start
                     logger.debug(
                         "Replaced transition time %s with %s (%s)",
                         seconds_to_timestamp(time),
-                        seconds_to_timestamp(silence.start),
-                        format_diff(time, silence.start),
+                        seconds_to_timestamp(ref.start),
+                        format_diff(time, ref.start),
                     )
                 ti += 1
 

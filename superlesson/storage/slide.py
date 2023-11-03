@@ -82,10 +82,7 @@ class Slides(UserList):
             for i in range(len(self.data)):
                 slide = self.data[i]
                 if slide.timeframe.end >= end:
-                    if i != 0:
-                        last = i - 1
-                    else:
-                        last = i
+                    last = i
                     break
         else:
             end = self.data[last].timeframe.end
@@ -93,24 +90,23 @@ class Slides(UserList):
         if first == last:
             logger.debug(
                 dedent(
-                    f"""
-                Can't merge slide {first} with itself:
+                    f"""Can't merge slide {first} with itself:
                     First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
-                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}
-                """
+                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}"""
                 )
             )
             return
 
-        logger.info(f"Merging slides {first} until {last}")
-        logger.debug(
-            dedent(
-                f"""
-                First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
-                Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}
-            """
+        if not logger.isEnabledFor(logging.DEBUG):
+            logger.info(f"Merging slides {first} until {last}")
+        else:
+            logger.debug(
+                dedent(
+                    f"""Merging slides {first} until {last}:
+                    First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
+                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}"""
+                )
             )
-        )
 
         transcription = " ".join(
             [slide.transcription.strip() for slide in self.data[first : last + 1]]
