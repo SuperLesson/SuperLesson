@@ -1,8 +1,21 @@
 import logging
-import os
+from datetime import timedelta
 from pathlib import Path
 
 logger = logging.getLogger("superlesson")
+
+
+def seconds_to_timestamp(s: float) -> str:
+    timestamp = str(timedelta(seconds=s))
+    if "." in timestamp:
+        timestamp = timestamp[:-3]
+    return timestamp
+
+
+def timeframe_to_timestamp(timeframe: tuple[float, float]) -> str:
+    start = seconds_to_timestamp(timeframe[0])
+    end = seconds_to_timestamp(timeframe[1])
+    return f"{start} - {end}"
 
 
 def find_lesson_root(lesson: str) -> Path:
