@@ -136,14 +136,6 @@ class Transitions:
     def _nearest(l, K):
         return sorted(l, key=lambda i: abs(i - K))[0]
 
-    @staticmethod
-    def _convert_seconds(seconds):
-        hours, remainder = divmod(seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        # Split seconds into whole seconds and milliseconds
-        seconds, milliseconds = divmod(seconds, 1)
-        return "%02d:%02d:%02d.%03d" % (hours, minutes, seconds, milliseconds * 1000)
-
     @classmethod
     def _improve_tt(cls, times, silences, threshold):
         logger.info("Improving transition times")
