@@ -27,7 +27,7 @@ class Loaded(Enum):
 class Store:
     _storage_map = {
         Step.transcribe: "transcription",
-        Step.insert_tmarks: "marked",
+        Step.merge_segments: "merged",
         Step.enumerate_slides: "enumerated",
         Step.replace_words: "replaced",
         Step.improve_punctuation: "improved",

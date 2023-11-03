@@ -138,7 +138,7 @@ class Transcribe:
 
         return pbar_update
 
-    @Step.step(Step.replace_words, Step.insert_tmarks)
+    @Step.step(Step.replace_words, Step.merge_segments)
     def replace_words(self):
         data_folder = self._transcription_source.path / "data"
         if not data_folder.exists():
@@ -173,7 +173,7 @@ class Transcribe:
             string = string.replace(old_string, new_string)
         return string
 
-    @Step.step(Step.improve_punctuation, Step.insert_tmarks)
+    @Step.step(Step.improve_punctuation, Step.merge_segments)
     def improve_punctuation(self):
         self._load_openai_key()
 
