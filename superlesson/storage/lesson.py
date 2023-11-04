@@ -1,12 +1,12 @@
 import logging
 import mimetypes
-import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 from .store import Store
+from .utils import find_lesson_root
 
 
 logger = logging.getLogger("superlesson")
@@ -69,19 +69,7 @@ class LessonFiles:
         transcribe_with: Optional[FileType] = None,
         annotate_with: Optional[FileType] = None,
     ):
-        if os.path.exists(lesson):
-            self.lesson_root = Path(lesson)
-        else:
-            src_path = Path(__file__).parent
-            lesson_root = src_path / "../../lessons" / lesson
-            lesson_root = lesson_root.resolve()
-
-            if lesson_root.exists():
-                self.lesson_root = lesson_root
-            else:
-                raise ValueError(f"Lesson {lesson} not found")
-
-        logger.debug(f"Lesson root: {self.lesson_root}")
+        self.lesson_root = find_lesson_root(lesson)
 
         self._files: list[LessonFile] = []
         self._transcribe_with = transcribe_with
