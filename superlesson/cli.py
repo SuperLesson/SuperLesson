@@ -2,11 +2,14 @@ import sys
 import logging
 import subprocess
 from argparse import ArgumentParser, Namespace
+from enum import Enum, unique
 from typing import Any
 
 from .steps import Annotate, Transcribe, Transitions
+from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
+from .storage.utils import find_lesson_root
 
 
 logging.basicConfig(
@@ -17,9 +20,28 @@ logging.basicConfig(
 logger = logging.getLogger("superlesson")
 
 
+@unique
+class PseudoStep(Enum):
+    transcribe = Step.transcribe
+    insert = Step.insert_tmarks
+    enumerate = Step.enumerate_slides
+    replace = Step.replace_words
+    improve = Step.improve_punctuation
+
+
 def main():
     args = parse_args()
     set_log_level(args)
+
+    if args.diff is not None:
+        step1 = PseudoStep[args.diff[0]].value
+        step2 = PseudoStep[args.diff[1]].value
+        if step1 == step2:
+            raise Exception("Cannot compare the same step")
+        if step1 > step2:
+            step1, step2 = step2, step1
+        check_differences(args.lesson, step1, step2)
+        return
 
     lesson_files = LessonFiles(args.lesson, args.transcribe_with, args.annotate_with)
 
@@ -41,8 +63,6 @@ def main():
     transcribe.replace_words()
     input("Press Enter to continue...")
     transcribe.improve_punctuation()
-    # TODO: fix this
-    # transcribe.check_differences(replacement_path, improved_path)
     input("Press Enter to continue...")
     if lesson_files.lecture_notes.file_type == FileType.video:
         raise NotImplementedError("Annotating from video is not implemented yet")
@@ -58,6 +78,13 @@ def parse_args() -> Namespace:
         description="CLI to transcribe lectures",
     )
     parser.add_argument("lesson", help="Lesson name or path to lesson directory")
+    parser.add_argument(
+        "--diff",
+        default=None,
+        nargs=2,
+        choices=[step.name for step in PseudoStep],
+        help="Diff between two steps",
+    )
     parser.add_argument(
         "--transcribe-with",
         choices=[FileType.video.value, FileType.audio.value],
@@ -149,6 +176,29 @@ def run_docker():
             "transcribe",
         ]
         + [arg for arg in sys.argv[1:] if arg != "--with-docker"]
+    )
+
+
+def check_differences(lesson: str, prev: Step, next: Step):
+    lesson_root = find_lesson_root(lesson)
+    prev_slides = Slides(lesson_root)
+    prev_slides.load(prev, prev, False)
+    prev_file = prev_slides.save_temp_txt()
+
+    next_slides = Slides(lesson_root)
+    next_slides.load(next, next, False)
+    next_file = next_slides.save_temp_txt()
+
+    subprocess.run(
+        " ".join(
+            [
+                "wdiff",
+                "-n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m'",
+                str(prev_file),
+                str(next_file),
+            ]
+        ),
+        shell=True,
     )
 
 
