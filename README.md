@@ -72,6 +72,17 @@ with CUDA by passing the `--with-docker` flag.
 
 If you prefer to run without a container, check out instructions on the [faster-whisper docs](https://github.com/guillaumekln/faster-whisper#gpu).
 
+### Comparing steps
+
+If you think some step is misbehaving, or would simply like to see what is happening, you can use
+the `--diff` flag followed by the two steps you want to compare, e.g.:
+
+```
+poetry run superlesson --diff merge improve
+```
+
+Note that only steps that generate some text output may be used.
+
 ## Development
 
 First, install `pre-commit`, then run `pre-commit install` to install all the

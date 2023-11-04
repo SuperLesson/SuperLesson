@@ -88,11 +88,13 @@ class Store:
 
         return data
 
-    def load(self, step: Step, depends_on: Step) -> tuple[Loaded, Optional[Any]]:
+    def load(
+        self, step: Step, depends_on: Step, prompt: bool = True
+    ) -> tuple[Loaded, Optional[Any]]:
         if self.in_storage(step):
             data = self._load(step)
             if data:
-                if (
+                if not prompt or (
                     input(
                         f"{step.value} has already been run. Run again? (y/N) "
                     ).lower()
@@ -111,6 +113,17 @@ class Store:
                     return (Loaded.new, data)
 
         return (Loaded.none, None)
+
+    def temp_save(self, txt_data: Any) -> Path:
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as temp_file:
+            temp_file.write(txt_data)
+            temp_path = Path(temp_file.name)
+
+        return temp_path
 
     def save_json(self, step: Step, data: Any):
         path = self._get_storage_path(step, Format.json)

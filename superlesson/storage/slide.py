@@ -142,11 +142,11 @@ class Slides(UserList):
     def has_data(self) -> bool:
         return len(self.data) != 0
 
-    def load(self, step: Step, depends_on: Step) -> Loaded:
+    def load(self, step: Step, depends_on: Step, prompt: bool = True) -> Loaded:
         if self._last_state is Loaded.in_memory and self.has_data():
             logger.debug("Data already loaded")
             return Loaded.in_memory
-        loaded, obj = self._store.load(step, depends_on)
+        loaded, obj = self._store.load(step, depends_on, prompt)
         if loaded is Loaded.none:
             logger.debug("No data to load")
             return Loaded.none
@@ -157,6 +157,11 @@ class Slides(UserList):
         self.data = data
         self._last_state = loaded
         return loaded
+
+    def save_temp_txt(self) -> Path:
+        return self._store.temp_save(
+            "\n".join([str(slide) + "\n" for slide in self.data])
+        )
 
     def save(self, step: Step):
         self._last_state = Loaded.in_memory

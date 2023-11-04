@@ -249,12 +249,6 @@ class Transcribe:
         else:
             return improved_text
 
-    def check_differences(self, replacement_path, improved_path):
-        import subprocess
-
-        command = f"wdiff -n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m' \"{replacement_path}\" \"{improved_path}\"; bash"
-        subprocess.Popen(["gnome-terminal", "--", "bash", "-c", command])
-
     @staticmethod
     def _count_tokens(text: str) -> int:
         import tiktoken
