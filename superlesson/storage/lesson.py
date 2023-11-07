@@ -64,16 +64,31 @@ class LessonFiles:
     def __init__(
         self,
         lesson: str,
-        transcribe_with: Optional[FileType] = None,
-        annotate_with: Optional[FileType] = None,
+        transcription_source_path: Optional[Path] = None,
+        presentation_path: Optional[Path] = None,
     ):
         self.lesson_root = find_lesson_root(lesson)
 
         self._files: list[LessonFile] = []
-        self._transcribe_with = transcribe_with
-        self._annotate_with = annotate_with
-        self._transcription_source: Optional[LessonFile] = None
-        self._presentation: Optional[LessonFile] = None
+
+        self._transcription_source = None
+        if transcription_source_path is not None:
+            # TODO: we should use lesson_root for storing data unconditionally
+            root = transcription_source_path.resolve().parent
+            if root != self.lesson_root:
+                raise ValueError("Transcription source must be in lesson root")
+            self._transcription_source = LessonFile(
+                transcription_source_path.name,
+                root,
+            )
+        self._presentation = None
+        if presentation_path is not None:
+            root = presentation_path.resolve().parent
+            if root != self.lesson_root:
+                raise ValueError("Presentation must be in lesson root")
+            self._presentation = LessonFile(
+                presentation_path.name, presentation_path.resolve().parent
+            )
 
     @property
     def files(self) -> list[LessonFile]:
@@ -105,9 +120,7 @@ class LessonFiles:
     def transcription_source(self) -> LessonFile:
         """The file to be used for transcription."""
         if self._transcription_source is None:
-            files = self._find_lesson_files(
-                [self._transcribe_with, FileType.video, FileType.audio]
-            )
+            files = self._find_lesson_files([FileType.video, FileType.audio])
             if not files:
                 raise ValueError(f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = files[0]
@@ -119,11 +132,7 @@ class LessonFiles:
     def presentation(self) -> LessonFile:
         """The file to be used for annotation."""
         if self._presentation is None:
-            files = self._find_lesson_files(
-                [self._annotate_with, FileType.notes, FileType.video]
-            )
-            if not files:
-                raise ValueError(f"Notes file not found on {self.lesson_root}")
+            files = self._find_lesson_files([FileType.notes])
             for file in files:
                 if file.name.endswith(".pdf"):
                     self._presentation = file

@@ -1,8 +1,9 @@
-import sys
 import logging
 import subprocess
+import sys
 from argparse import ArgumentParser, Namespace
 from enum import Enum, unique
+from pathlib import Path
 from typing import Any
 
 from .steps import Annotate, Transcribe, Transitions
@@ -10,7 +11,6 @@ from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
 from .storage.utils import find_lesson_root
-
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -85,15 +85,15 @@ def parse_args() -> Namespace:
     )
     parser.add_argument(
         "--transcribe-with",
-        choices=[FileType.video.value, FileType.audio.value],
+        type=Path,
         default=None,
-        help="Use audio or video file for transcription",
+        help="Path to transcription source (has to be a video file)",
     )
     parser.add_argument(
         "--annotate-with",
-        choices=[FileType.notes.value, FileType.video.value],
+        type=Path,
         default=None,
-        help="Use text/pdf or video as source for lecture notes",
+        help="Path to annotation source (has to be a PDF file)",
     )
     parser.add_argument(
         "--model-size",  # model only works with pt now
