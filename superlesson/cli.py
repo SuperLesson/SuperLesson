@@ -2,7 +2,6 @@ import logging
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
-from enum import Enum, unique
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +9,7 @@ from .steps import Annotate, Transcribe, Transitions
 from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
+from .storage.store import Store
 from .storage.utils import find_lesson_root
 
 logging.basicConfig(
@@ -20,22 +20,13 @@ logging.basicConfig(
 logger = logging.getLogger("superlesson")
 
 
-@unique
-class PseudoStep(Enum):
-    transcribe = Step.transcribe
-    merge = Step.merge_segments
-    enumerate = Step.enumerate_slides
-    replace = Step.replace_words
-    improve = Step.improve_punctuation
-
-
 def main():
     args = parse_args()
     set_log_level(args)
 
     if args.diff is not None:
-        step1 = PseudoStep[args.diff[0]].value
-        step2 = PseudoStep[args.diff[1]].value
+        step1 = Step[args.diff[0]]
+        step2 = Step[args.diff[1]]
         if step1 == step2:
             raise Exception("Cannot compare the same step")
         if step1 > step2:
@@ -80,7 +71,7 @@ def parse_args() -> Namespace:
         "--diff",
         default=None,
         nargs=2,
-        choices=[step.name for step in PseudoStep],
+        choices=[step.name for step in Store._storage_map],
         help="Diff between two steps",
     )
     parser.add_argument(

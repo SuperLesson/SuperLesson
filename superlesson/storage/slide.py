@@ -1,16 +1,14 @@
 import logging
-from collections import namedtuple, UserList
+from collections import UserList, namedtuple
 from dataclasses import dataclass
-from datetime import timedelta
 from pathlib import Path
 from textwrap import dedent, fill
-from typing import Optional
+from typing import Any, Optional
 
 from superlesson.steps.step import Step
 
 from .store import Loaded, Store
 from .utils import timeframe_to_timestamp
-
 
 logger = logging.getLogger("superlesson")
 
@@ -155,7 +153,7 @@ class Slides(UserList):
             self._store.save_json(step, [slide.to_dict() for slide in self.data])
             if step is Step.transcribe:
                 return
-            if self._always_export_txt or step is Step.improve_punctuation:
+            if self._always_export_txt or step is Step.improve:
                 self._store.save_txt(
                     step, "\n".join([repr(slide) + "\n" for slide in self.data])
                 )
