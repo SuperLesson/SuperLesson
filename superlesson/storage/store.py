@@ -38,14 +38,24 @@ class Store:
 
         return transcriptions
 
+    def _parse_json(self, json_path: Path) -> list[dict[str, Any]]:
+        json_data = json_path.read_text()
+        data = json_lib.loads(json_data)
+
+        for e in data:
+            for k, v in e.items():
+                if v == "None":
+                    e[k] = None
+
+        return data
+
     def load(self, filename: str, load_txt: bool) -> Optional[list[Any]]:
         json_path = self._get_storage_path(filename, Format.json)
         if not json_path.exists():
             return None
 
         logger.debug(f"Loading {json_path}")
-        json_data = json_path.read_text()
-        data = json_lib.loads(json_data)
+        data = self._parse_json(json_path)
 
         txt_path = self._get_storage_path(filename, Format.txt)
         if not load_txt or not txt_path.exists():
