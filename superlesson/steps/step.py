@@ -39,26 +39,26 @@ class Step(Enum):
         steps = self.to_list()
         return steps.index(self) < steps.index(other)
 
-    @staticmethod
-    def step(step: Step, depends_on: Optional[Step] = None):
-        def decorator(func: Callable):
-            def wrapper(instance, *args, **kwargs):
-                from superlesson.storage import Slides
 
-                # HACK: to preserve behavior from Loaded.already_ran, we have to track if
-                # any step has already been run
-                global RAN_STEP
+def step(step: Step, depends_on: Optional[Step] = None):
+    def decorator(func: Callable):
+        def wrapper(instance, *args, **kwargs):
+            from superlesson.storage import Slides
 
-                slides = instance.slides
-                assert isinstance(slides, Slides)
-                if not RAN_STEP and slides.load(step, depends_on) is step:
-                    return
-                logger.info(f"Running step {step.value}")
-                ret = func(instance, *args, **kwargs)
-                instance.slides.save(step)
-                RAN_STEP = True
-                return ret
+            # HACK: to preserve behavior from Loaded.already_ran, we have to track if
+            # any step has already been run
+            global RAN_STEP
 
-            return wrapper
+            slides = instance.slides
+            assert isinstance(slides, Slides)
+            if not RAN_STEP and slides.load(step, depends_on) is step:
+                return
+            logger.info(f"Running step {step.value}")
+            ret = func(instance, *args, **kwargs)
+            instance.slides.save(step)
+            RAN_STEP = True
+            return ret
 
-        return decorator
+        return wrapper
+
+    return decorator

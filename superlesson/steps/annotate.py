@@ -4,7 +4,7 @@ from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
 
-from .step import Step
+from .step import Step, step
 
 logger = logging.getLogger("superlesson")
 
@@ -14,7 +14,7 @@ class Annotate:
         self._presentation = presentation
         self.slides = slides
 
-    @Step.step(Step.enumerate, Step.merge)
+    @step(Step.enumerate, Step.merge)
     def enumerate_slides_from_tframes(self):
         from pypdf import PdfReader
 
@@ -84,7 +84,7 @@ class Annotate:
 
         return ret_code
 
-    @Step.step(Step.annotate, Step.enumerate)
+    @step(Step.annotate, Step.enumerate)
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter, Transformation
 

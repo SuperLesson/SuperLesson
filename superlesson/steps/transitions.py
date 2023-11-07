@@ -6,7 +6,7 @@ from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame
 from superlesson.storage.utils import seconds_to_timestamp, timeframe_to_timestamp
 
-from .step import Step
+from .step import Step, step
 
 logger = logging.getLogger("superlesson")
 
@@ -16,7 +16,7 @@ class Transitions:
         self._transcription_source = transcription_source
         self.slides = slides
 
-    @Step.step(Step.merge, Step.transcribe)
+    @step(Step.merge, Step.transcribe)
     def merge_segments(self, using_silences: bool):
         # TODO: use audio as source for transcription
         video_path = self._transcription_source.full_path
