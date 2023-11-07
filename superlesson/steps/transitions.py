@@ -66,7 +66,7 @@ class Transitions:
         assert len(self.slides) == len(tframes) + 1
 
         for i, tframe in enumerate(tframes):
-            self.slides[i].png_path = tframe.path
+            self.slides[i].tframe = tframe.path
 
     @staticmethod
     def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:

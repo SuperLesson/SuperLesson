@@ -50,12 +50,12 @@ class Annotate:
 
         last_answer = 0
         for i, slide in enumerate(self.slides):
-            path = slide.png_path
+            path = slide.tframe
             if path is not None:
                 self._sys_open(path)
                 last_answer = get_slide_number_from_user(last_answer + 1)
             else:
-                assert i == len(self.slides) - 1, f"Slide {i} doesn't have a png_path"
+                assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
                 last_answer = get_slide_number_from_user(last_answer + 1, True)
             if last_answer == 0:
                 logger.info("Slide will be hidden")
