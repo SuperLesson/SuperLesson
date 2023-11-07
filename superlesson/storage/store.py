@@ -24,23 +24,12 @@ class Loaded(Enum):
 
 
 class Store:
-    _storage_map = {
-        Step.transcribe: "transcription",
-        Step.merge: "merged",
-        Step.enumerate: "enumerated",
-        Step.replace: "replaced",
-        Step.improve: "improved",
-    }
-
     def __init__(self, lesson_root: Path):
         self._lesson_root = lesson_root
         self._storage_root = lesson_root / ".data"
 
-    def in_storage(self, step: Step) -> bool:
-        return self._storage_map.get(step) is not None
-
     def _get_storage_path(self, step: Step, format: Format) -> Path:
-        file = self._storage_map[step]
+        file = step.value.filename
         if format is Format.json:
             if not self._storage_root.exists():
                 self._storage_root.mkdir()
@@ -93,7 +82,7 @@ class Store:
     def load(
         self, step: Step, depends_on: Step, prompt: bool = True
     ) -> tuple[Loaded, Optional[Any]]:
-        if self.in_storage(step):
+        if step.value.in_storage():
             data = self._load(step)
             if data:
                 if not prompt or (
@@ -109,7 +98,7 @@ class Store:
                 raise Exception(
                     f"Step {step} depends on {depends_on}, but {depends_on} was not run yet."
                 )
-            if self.in_storage(s):
+            if s.value.in_storage():
                 data = self._load(s)
                 if data:
                     logger.info(f"Loaded step {s.value}")

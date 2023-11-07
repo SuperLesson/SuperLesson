@@ -9,7 +9,6 @@ from .steps import Annotate, Transcribe, Transitions
 from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
-from .storage.store import Store
 from .storage.utils import find_lesson_root
 
 logging.basicConfig(
@@ -71,7 +70,7 @@ def parse_args() -> Namespace:
         "--diff",
         default=None,
         nargs=2,
-        choices=[step.name for step in Store._storage_map],
+        choices=[step.name for step in Step if step.value.in_storage()],
         help="Diff between two steps",
     )
     parser.add_argument(

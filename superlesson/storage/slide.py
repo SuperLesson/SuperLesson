@@ -152,7 +152,7 @@ class Slides(UserList):
 
     def save(self, step: Step):
         self._last_state = Loaded.in_memory
-        if self._store.in_storage(step):
+        if step.value.in_storage():
             self._store.save_json(step, [slide.to_dict() for slide in self.data])
             if step is Step.transcribe:
                 return
