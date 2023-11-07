@@ -24,10 +24,6 @@ class Slide:
     number: Optional[int] = None
     merged: bool = False
 
-    def __init__(self, transcription: str, timeframe: TimeFrame):
-        self.transcription = transcription
-        self.timeframe = timeframe
-
     def to_dict(self):
         return {
             "transcription": self.transcription,
@@ -50,19 +46,6 @@ class Slides(UserList):
         self._store = Store(lesson_root)
         self._last_state = None
         self._always_export_txt = always_export_txt
-
-    @staticmethod
-    def _load_slide(slide_obj: dict) -> Slide:
-        start, end = slide_obj["timeframe"]["start"], slide_obj["timeframe"]["end"]
-        assert isinstance(start, float), "Couldn't find timestamps"
-        start, end = float(start), float(end)
-        slide = Slide(slide_obj["transcription"], TimeFrame(start, end))
-        png_path = slide_obj["png_path"]
-        if png_path is not None:
-            slide.png_path = Path(png_path)
-        if slide_obj["number"] is not None:
-            slide.number = slide_obj["number"]
-        return slide
 
     def merge(self, end: Optional[float] = None):
         if len(self.data) == 0:
@@ -121,6 +104,34 @@ class Slides(UserList):
     def has_data(self) -> bool:
         return len(self.data) != 0
 
+    @staticmethod
+    def _load_slide(slide_obj: dict) -> Slide:
+        timeframe = slide_obj["timeframe"].values()
+        assert len(timeframe) == 2, "Couldn't find timestamps"
+        png_path = slide_obj["png_path"]
+        if png_path is not None:
+            png_path = Path(png_path)
+        slide = Slide(
+            slide_obj["transcription"],
+            TimeFrame(*timeframe),
+            png_path=png_path,
+            number=slide_obj["number"],
+        )
+        return slide
+
+    def _load_slides(self, data: list[Any], verbose: bool = False):
+        slides: list[Slide] = []
+        for obj in data:
+            slide = self._load_slide(obj)
+            # HACK: loading from transcribe will show too many segments so let's just skip those
+            if verbose:
+                logger.debug("Loaded slide: %s", repr(slide))
+            slides.append(slide)
+
+        if not verbose:
+            logger.debug("Loaded raw transcription")
+        self.data = slides
+
     def load(self, step: Step, depends_on: Step, prompt: bool = True) -> Loaded:
         if self._last_state is Loaded.in_memory and self.has_data():
             logger.debug("Data already loaded")
@@ -130,15 +141,7 @@ class Slides(UserList):
             logger.debug("No data to load")
             return Loaded.none
         assert obj is not None, "Slides object should be populated"
-        data: list[Slide] = []
-        for i in range(len(obj)):
-            slide = self._load_slide(obj[i])
-            # HACK: loading from transcribe will show each word as a separate slide
-            # so let's just skip those
-            if depends_on is not Step.transcribe:
-                logger.debug("Loaded slide: %s", repr(slide))
-            data.append(slide)
-        self.data = data
+        self._load_slides(obj, step is not Step.transcribe)
         self._last_state = loaded
         return loaded
 
