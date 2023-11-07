@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, unique
 from typing import Callable, Optional
@@ -32,14 +31,6 @@ class Step(Enum):
     @staticmethod
     def to_list() -> list[Step]:
         return list([s for s in Step])
-
-    @classmethod
-    def get_last(cls, step: Step) -> Sequence[Step]:
-        if step is cls.transcribe:
-            return []
-        steps = cls.to_list()
-        index = steps.index(step) - 1
-        return steps[index::-1]
 
     def __lt__(self, other: Step) -> bool:
         steps = self.to_list()
