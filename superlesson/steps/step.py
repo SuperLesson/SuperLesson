@@ -2,19 +2,32 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from enum import Enum
+from dataclasses import dataclass
+from enum import Enum, unique
 from typing import Callable, Optional
 
 logger = logging.getLogger("superlesson")
 
 
+@dataclass
+class StepMetadata:
+    name: str
+    filename: Optional[str] = None
+    instructions: Optional[str] = None
+
+    def in_storage(self):
+        return self.filename is not None
+
+
+@unique
 class Step(Enum):
-    transcribe = "transcribe"
-    merge = "merge segments"
-    enumerate = "enumerate slides"
-    replace = "replace words"
-    improve = "improve punctuation"
-    annotate = "annotate"
+    transcribe = StepMetadata(name="transcribe", filename="transcription")
+    merge = StepMetadata(name="merge segments", filename="merged")
+    enumerate = StepMetadata(name="enumerate slides", filename="enumerated")
+    replace = StepMetadata(name="replace words", filename="replaced")
+    improve = StepMetadata(name="improve punctuation", filename="improved")
+    # TODO: annotated pdf should be managed by storage layer
+    annotate = StepMetadata(name="annotate")
 
     @staticmethod
     def to_list() -> list[Step]:
