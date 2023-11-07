@@ -1,7 +1,7 @@
+from enum import Enum, unique
 import json as json_lib
 import logging
 import re
-from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
@@ -10,6 +10,7 @@ from superlesson.steps.step import Step
 logger = logging.getLogger("superlesson")
 
 
+@unique
 class Format(Enum):
     json = "json"
     txt = "txt"
@@ -25,10 +26,10 @@ class Loaded(Enum):
 class Store:
     _storage_map = {
         Step.transcribe: "transcription",
-        Step.merge_segments: "merged",
-        Step.enumerate_slides: "enumerated",
-        Step.replace_words: "replaced",
-        Step.improve_punctuation: "improved",
+        Step.merge: "merged",
+        Step.enumerate: "enumerated",
+        Step.replace: "replaced",
+        Step.improve: "improved",
     }
 
     def __init__(self, lesson_root: Path):

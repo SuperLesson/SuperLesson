@@ -5,16 +5,15 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Callable, Optional
 
-
 logger = logging.getLogger("superlesson")
 
 
 class Step(Enum):
     transcribe = "transcribe"
-    merge_segments = "merge_segments"
-    enumerate_slides = "enumerate_slides"
-    replace_words = "replace_words"
-    improve_punctuation = "improve_punctuation"
+    merge = "merge segments"
+    enumerate = "enumerate slides"
+    replace = "replace words"
+    improve = "improve punctuation"
     annotate = "annotate"
 
     @staticmethod

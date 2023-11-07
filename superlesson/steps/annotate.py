@@ -10,13 +10,11 @@ logger = logging.getLogger("superlesson")
 
 
 class Annotate:
-    """Class to annotate a lesson."""
-
     def __init__(self, slides: Slides, presentation: LessonFile):
         self._presentation = presentation
         self.slides = slides
 
-    @Step.step(Step.enumerate_slides, Step.merge_segments)
+    @Step.step(Step.enumerate, Step.merge)
     def enumerate_slides_from_tframes(self):
         from pypdf import PdfReader
 
@@ -86,7 +84,7 @@ class Annotate:
 
         return ret_code
 
-    @Step.step(Step.annotate, Step.enumerate_slides)
+    @Step.step(Step.annotate, Step.enumerate)
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter, Transformation
 

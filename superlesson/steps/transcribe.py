@@ -10,7 +10,6 @@ from superlesson.storage.slide import TimeFrame
 
 from .step import Step
 
-
 logger = logging.getLogger("superlesson")
 
 
@@ -216,8 +215,8 @@ class Transcribe:
             timestamp_last = 0  # current timestamp
             last_burst = 0.0  # time of last iteration burst aka chunk
             set_delay = (
-                0.1
-            )  # max time it takes to iterate chunk & minimum time between chunks
+                0.1  # max time it takes to iterate chunk & minimum time between chunks
+            )
             jobs = []
             transcription_segments = []
             for segment in segments:
@@ -268,7 +267,7 @@ class Transcribe:
 
         return pbar_update
 
-    @Step.step(Step.replace_words, Step.merge_segments)
+    @Step.step(Step.replace, Step.merge)
     def replace_words(self):
         replacements_path = self._transcription_source.path / "replacements.txt"
         if not replacements_path.exists():
@@ -287,7 +286,7 @@ class Transcribe:
             for slide in self.slides:
                 slide.transcription = slide.transcription.replace(word, rep)
 
-    @Step.step(Step.improve_punctuation, Step.merge_segments)
+    @Step.step(Step.improve, Step.merge)
     def improve_punctuation(self):
         self._load_openai_key()
 
