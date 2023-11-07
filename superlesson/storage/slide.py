@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from collections import UserList, namedtuple
 from dataclasses import dataclass
 from enum import Enum, unique
@@ -141,41 +142,48 @@ class Slides(UserList):
             logger.debug("Loaded raw transcription")
         self.data = slides
 
-    def load(self, step: Step, depends_on: Step, prompt: bool = True) -> Loaded:
+    def load_step(self, step: Step) -> bool:
+        meta = step.value
+        assert meta.filename is not None
+        logger.debug(f"Loading data from step {step.value.name}")
+        verbose = step is not Step.transcribe
+        data = self._store.load(meta.filename, verbose)
+        if data is not None:
+            self._load_slides(data, verbose)
+            self._last_state = Loaded.new
+            return True
+        return False
+
+    def load_from_dependencies(self, step: Step, depends_on: Step) -> Optional[Step]:
+        for s in Step.get_last(step):
+            if s < depends_on:
+                return None
+            logging.debug(f"Trying to load {s.value.filename}")
+            if s.value.in_storage() and self.load_step(s):
+                return s
+
+    def load(self, step: Step, depends_on: Optional[Step] = None) -> Loaded:
         if self._last_state is Loaded.in_memory and self.has_data():
             logger.debug("Data already loaded")
             return Loaded.in_memory
 
-        meta = step.value
-        if meta.in_storage():
-            assert meta.filename is not None
-            data = self._store.load(meta.filename, step is not Step.transcribe)
-            if data:
-                if not prompt or (
-                    input(
-                        f"{step.value} has already been run. Run again? (y/N) "
-                    ).lower()
-                    != "y"
-                ):
-                    self._last_state = Loaded.already_run
-                    return Loaded.already_run
+        if step.value.in_storage() and self.load_step(step):
+            if (
+                input(
+                    f'"{step.value.name}" has already been run. Run again? [y/N] '
+                ).lower()
+                != "y"
+            ):
+                self._last_state = Loaded.already_run
+                return Loaded.already_run
 
-        for s in Step.get_last(step):
-            if s < depends_on:
-                raise Exception(
-                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet."
-                )
-            if s.value.in_storage():
-                verbose = s is not Step.transcribe
-                data = self._store.load(s.value.filename, verbose)
-                if data:
-                    logger.info(f"Loaded step {s.value}")
-                    self._load_slides(data, verbose)
-                    self._last_state = Loaded.new
-                    return Loaded.new
+        if depends_on is None:
+            return Loaded.none
 
-        logger.debug("No data to load")
-        return Loaded.none
+        if self.load_from_dependencies(step, depends_on):
+            return Loaded.new
+        else:
+            return Loaded.none
 
     def save_temp_txt(self) -> Path:
         return self._store.temp_save(
