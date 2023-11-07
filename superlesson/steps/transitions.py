@@ -53,8 +53,10 @@ class Transitions:
         # use this to merge the last slides
         self.slides.merge()
 
+        assert len(self.slides) == len(png_paths) + 1
+
         for i, path in enumerate(png_paths):
-            self.slides[i + 1].png_path = path
+            self.slides[i].png_path = path
 
     def _get_png_paths(self) -> list[Path]:
         tt_directory = self._transcription_source.path / "tframes"
