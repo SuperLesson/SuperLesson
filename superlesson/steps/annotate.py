@@ -198,22 +198,23 @@ class Annotate:
 )
 
 """
-        formatted_texts: list[str] = []
-        current_text = self.slides[0].transcription
-        for next in range(1, len(self.slides)):
-            current_text, next_text = self.fade_slide(
-                current_text, self.slides[next].transcription
-            )
-            formatted_texts.append(current_text)
-            current_text = next_text
-        formatted_texts.append(current_text)
+        # FIXME: (#110) typst complains about invalid syntax in some documents
+        # formatted_texts: list[str] = []
+        # current_text = self.slides[0].transcription
+        # for next in range(1, len(self.slides)):
+        #     current_text, next_text = self.fade_slide(
+        #         current_text, self.slides[next].transcription
+        #     )
+        #     formatted_texts.append(current_text)
+        #     current_text = next_text
+        # formatted_texts.append(current_text)
 
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
-                "\n#pagebreak()\n".join([text for text in formatted_texts]).encode(
-                    "utf-8"
-                )
+                "\u21E2 \n#pagebreak()\n \u21E2".join(
+                    [slide.transcription for slide in self.slides]
+                ).encode("utf-8")
             )
             temp_file_name = f.name
             logger.debug(f"Typst temp file saved as {temp_file_name}")
