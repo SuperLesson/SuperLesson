@@ -8,7 +8,7 @@ from pathlib import Path
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
 
-from .step import Step
+from .step import Step, step
 
 logger = logging.getLogger("superlesson")
 
@@ -33,7 +33,7 @@ class Transcribe:
         self._transcription_source = transcription_source
         self.slides = slides
 
-    @Step.step(Step.transcribe)
+    @step(Step.transcribe)
     def single_file(self, model_size: str, local: bool):
         from os import getenv
 
@@ -215,8 +215,8 @@ class Transcribe:
             timestamp_last = 0  # current timestamp
             last_burst = 0.0  # time of last iteration burst aka chunk
             set_delay = (
-                0.1  # max time it takes to iterate chunk & minimum time between chunks
-            )
+                0.1
+            )  # max time it takes to iterate chunk & minimum time between chunks
             jobs = []
             transcription_segments = []
             for segment in segments:
@@ -267,7 +267,7 @@ class Transcribe:
 
         return pbar_update
 
-    @Step.step(Step.replace, Step.merge)
+    @step(Step.replace, Step.merge)
     def replace_words(self):
         replacements_path = self._transcription_source.path / "replacements.txt"
         if not replacements_path.exists():
@@ -286,7 +286,7 @@ class Transcribe:
             for slide in self.slides:
                 slide.transcription = slide.transcription.replace(word, rep)
 
-    @Step.step(Step.improve, Step.merge)
+    @step(Step.improve, Step.merge)
     def improve_punctuation(self):
         self._load_openai_key()
 
