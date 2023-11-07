@@ -3,6 +3,7 @@ from datetime import datetime
 import time
 
 from superlesson.storage import LessonFile, Slide, Slides
+from superlesson.storage.slide import TimeFrame
 
 from .step import Step
 
@@ -44,7 +45,9 @@ class Transcribe:
         segments = self._run_with_pbar(segments, info)
 
         for segment in segments:
-            self.slides.append(Slide(segment.text, (segment.start, segment.end)))
+            self.slides.append(
+                Slide(segment.text, TimeFrame(segment.start, segment.end))
+            )
             logger.info(
                 "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
             )
