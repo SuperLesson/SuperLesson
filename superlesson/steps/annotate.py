@@ -20,10 +20,10 @@ class Annotate:
 
         max_slide_number = len(PdfReader(self._presentation.full_path).pages)
 
-        def get_slide_number_from_user(default: int, is_first: bool = False) -> int:
-            if is_first:
+        def get_slide_number_from_user(default: int, is_last: bool = False) -> int:
+            if is_last:
                 user_input = input(
-                    f"What is the number of the first slide? (default: {default}) "
+                    f"What is the number of the last slide? (default: {default}) "
                 )
             else:
                 user_input = input(
@@ -48,18 +48,15 @@ class Annotate:
             )
             return default
 
-        last_answer = get_slide_number_from_user(1, True)
-        if last_answer > max_slide_number:
-            last_answer = max_slide_number
-        logger.debug("First slide number: %d", last_answer - 1)
-        self.slides[0].number = last_answer - 1
-
-        for i in range(1, len(self.slides)):
-            slide = self.slides[i]
+        last_answer = 0
+        for i, slide in enumerate(self.slides):
             path = slide.png_path
-            assert path is not None, f"Slide {i} doesn't have a png_path"
-            self._sys_open(path)
-            last_answer = get_slide_number_from_user(last_answer + 1)
+            if path is not None:
+                self._sys_open(path)
+                last_answer = get_slide_number_from_user(last_answer + 1)
+            else:
+                assert i == len(self.slides) - 1, f"Slide {i} doesn't have a png_path"
+                last_answer = get_slide_number_from_user(last_answer + 1, True)
             if last_answer == 0:
                 logger.info("Slide will be hidden")
                 slide.number = -1
