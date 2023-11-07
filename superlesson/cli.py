@@ -58,14 +58,14 @@ def main():
     transitions = Transitions(slides, lesson_files.transcription_source)
     transitions.merge_segments(args.use_silences)
     input("Press Enter to continue...")
-    annotate = Annotate(slides, lesson_files.lecture_notes)
+    annotate = Annotate(slides, lesson_files.presentation)
     annotate.enumerate_slides_from_tframes()
     input("Press Enter to continue...")
     transcribe.replace_words()
     input("Press Enter to continue...")
     transcribe.improve_punctuation()
     input("Press Enter to continue...")
-    if lesson_files.lecture_notes.file_type == FileType.video:
+    if lesson_files.presentation.file_type == FileType.video:
         raise NotImplementedError("Annotating from video is not implemented yet")
     annotate.to_pdf()
 
@@ -152,7 +152,7 @@ def single_step_setup(_class: Any) -> tuple[Namespace, Any]:
 
     slides = Slides(lesson_files.lesson_root, args.debug)
     if _class is Annotate:
-        instance = _class(slides, lesson_files.lecture_notes)
+        instance = _class(slides, lesson_files.presentation)
     else:
         instance = _class(slides, lesson_files.transcription_source)
     return args, instance

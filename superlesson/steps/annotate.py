@@ -12,15 +12,15 @@ logger = logging.getLogger("superlesson")
 class Annotate:
     """Class to annotate a lesson."""
 
-    def __init__(self, slides: Slides, lecture_notes: LessonFile):
-        self._lecture_notes = lecture_notes
+    def __init__(self, slides: Slides, presentation: LessonFile):
+        self._presentation = presentation
         self.slides = slides
 
     @Step.step(Step.enumerate_slides, Step.merge_segments)
     def enumerate_slides_from_tframes(self):
         from pypdf import PdfReader
 
-        max_slide_number = len(PdfReader(self._lecture_notes.full_path).pages)
+        max_slide_number = len(PdfReader(self._presentation.full_path).pages)
 
         def get_slide_number_from_user(default: int, is_first: bool = False) -> int:
             if is_first:
@@ -90,7 +90,7 @@ class Annotate:
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter, Transformation
 
-        pdf = PdfReader(self._lecture_notes.full_path)
+        pdf = PdfReader(self._presentation.full_path)
 
         page_width = pdf.pages[0].mediabox.width
         # pt -> inch
@@ -120,7 +120,7 @@ class Annotate:
             logger.debug(f"Adding transcription to slide {i}")
             merger.append(fileobj=trans, pages=(i, i + 1))
 
-        output = self._lecture_notes.path / "annotations.pdf"
+        output = self._presentation.path / "annotations.pdf"
         merger.write(output)
         logger.info(f"Annotated PDF saved as {output}")
 
