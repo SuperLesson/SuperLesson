@@ -1,6 +1,8 @@
 import datetime
+from dataclasses import dataclass
 import logging
 from pathlib import Path
+import re
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame
@@ -9,6 +11,12 @@ from superlesson.storage.utils import seconds_to_timestamp, timeframe_to_timesta
 from .step import Step, step
 
 logger = logging.getLogger("superlesson")
+
+
+@dataclass
+class TransitionFrame:
+    timestamp: float
+    path: Path
 
 
 class Transitions:
@@ -22,13 +30,9 @@ class Transitions:
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
 
-        png_paths = self._get_png_paths()
-        timestamps = self._get_ttimes_from_tframes([path.name for path in png_paths])
-
-        if not audio_path.exists():
-            raise Exception("Please run transcribe before inserting tmarks")
-
         if using_silences:
+            if not audio_path.exists():
+                raise Exception("Please run transcribe before inserting tmarks")
             references = []
             for threshold_offset in range(-6, -10, -2):
                 references = self._detect_silence(audio_path, threshold_offset)
@@ -40,6 +44,12 @@ class Transitions:
                 )
         else:
             references = self._get_period_end_times()
+
+        tframes = self._get_transition_frames(
+            self._transcription_source.path / "tframes"
+        )
+
+        timestamps = [frame.timestamp for frame in tframes]
 
         if len(references) != 0:
             improved = self._improve_tts_with_references(timestamps, references, 2.0)
@@ -53,41 +63,38 @@ class Transitions:
         # use this to merge the last slides
         self.slides.merge()
 
-        assert len(self.slides) == len(png_paths) + 1
+        assert len(self.slides) == len(tframes) + 1
 
-        for i, path in enumerate(png_paths):
-            self.slides[i].png_path = path
+        for i, tframe in enumerate(tframes):
+            self.slides[i].png_path = tframe.path
 
-    def _get_png_paths(self) -> list[Path]:
-        tt_directory = self._transcription_source.path / "tframes"
+    @staticmethod
+    def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:
         png_paths = []
-        for file in tt_directory.iterdir():
+        for file in tframes_dir.iterdir():
             if file.suffix == ".png":
                 png_paths.append(file)
-
-        return png_paths
-
-    def _get_ttimes_from_tframes(self, png_names: list[str]) -> list[float]:
-        import re
 
         def to_timedelta(h, m, s):
             return datetime.timedelta(hours=int(h), minutes=int(m), seconds=int(s))
 
-        # we have png files in the format XXXXXX.mp4_HH-MM-SS.png
-        timestamps = []
-        for name in png_names:
+        tframes = []
+        for path in png_paths:
+            name = path.name
+            # we have png files in the format XXXXXX.mp4_HH-MM-SS.png
             match = re.search(r"_(\d{2}-\d{2}-\d{2})\.png", name)
             assert match is not None
             timestamp = to_timedelta(*match.group(1).split("-")).total_seconds()
-            timestamps.append(timestamp)
+            tframes.append(TransitionFrame(timestamp, path))
 
-        timestamps.sort()
+        tframes.sort(key=lambda x: x.timestamp)
 
         logger.debug(
-            "Transition times: %s", [seconds_to_timestamp(time) for time in timestamps]
+            "Transition times: %s",
+            [seconds_to_timestamp(frame.timestamp) for frame in tframes],
         )
 
-        return timestamps
+        return tframes
 
     def _get_period_end_times(self) -> list[TimeFrame]:
         punctuation = [".", "?", "!"]
