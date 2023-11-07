@@ -67,7 +67,7 @@ This will execute all the following steps:
 3. `enumerate` slides from tframes
 4. `replace` known bogus words
 5. `improve` punctuation using ChatGPT
-6. `annotate` the lecture notes
+6. `annotate` the presentation
 
 You can also run individual steps using
 

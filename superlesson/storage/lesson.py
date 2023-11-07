@@ -73,7 +73,7 @@ class LessonFiles:
         self._transcribe_with = transcribe_with
         self._annotate_with = annotate_with
         self._transcription_source: Optional[LessonFile] = None
-        self._lecture_notes: Optional[LessonFile] = None
+        self._presentation: Optional[LessonFile] = None
 
     @property
     def files(self) -> list[LessonFile]:
@@ -111,32 +111,28 @@ class LessonFiles:
             if not files:
                 raise ValueError(f"Transcription file not found on {self.lesson_root}")
             self._transcription_source = files[0]
+            logger.debug(f"Transcription source: {self._transcription_source}")
 
-        logger.debug(f"Transcription source: {self._transcription_source}")
         return self._transcription_source
 
     @property
-    def lecture_notes(self) -> LessonFile:
+    def presentation(self) -> LessonFile:
         """The file to be used for annotation."""
-        if self._lecture_notes is None:
+        if self._presentation is None:
             files = self._find_lesson_files(
                 [self._annotate_with, FileType.notes, FileType.video]
             )
             if not files:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
             for file in files:
-                if file.file_type == FileType.video:
-                    raise NotImplementedError(
-                        "Annotating from video is not implemented yet"
-                    )
                 if file.name.endswith(".pdf"):
-                    self._lecture_notes = file
+                    self._presentation = file
+                    logger.debug(f"Presentation: {self._presentation}")
                     break
-            if self._lecture_notes is None:
+            if self._presentation is None:
                 raise ValueError(f"Notes file not found on {self.lesson_root}")
 
-        logger.debug(f"Lecture notes: {self._lecture_notes}")
-        return self._lecture_notes
+        return self._presentation
 
     def _find_lesson_files(
         self, accepted_types: list[Optional[FileType]]
