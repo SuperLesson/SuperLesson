@@ -1,19 +1,28 @@
 import logging
 from collections import UserList, namedtuple
 from dataclasses import dataclass
+from enum import Enum, unique
 from pathlib import Path
 from textwrap import dedent, fill
 from typing import Any, Optional
 
 from superlesson.steps.step import Step
 
-from .store import Loaded, Store
+from .store import Store
 from .utils import timeframe_to_timestamp
 
 logger = logging.getLogger("superlesson")
 
 
 TimeFrame = namedtuple("TimeFrame", ["start", "end"])
+
+
+@unique
+class Loaded(Enum):
+    new = "loaded_new"
+    already_run = "already_loaded"
+    none = "not_loaded"
+    in_memory = "in_memory"
 
 
 @dataclass
@@ -136,14 +145,37 @@ class Slides(UserList):
         if self._last_state is Loaded.in_memory and self.has_data():
             logger.debug("Data already loaded")
             return Loaded.in_memory
-        loaded, obj = self._store.load(step, depends_on, prompt)
-        if loaded is Loaded.none:
-            logger.debug("No data to load")
-            return Loaded.none
-        assert obj is not None, "Slides object should be populated"
-        self._load_slides(obj, step is not Step.transcribe)
-        self._last_state = loaded
-        return loaded
+
+        meta = step.value
+        if meta.in_storage():
+            assert meta.filename is not None
+            data = self._store.load(meta.filename, step is not Step.transcribe)
+            if data:
+                if not prompt or (
+                    input(
+                        f"{step.value} has already been run. Run again? (y/N) "
+                    ).lower()
+                    != "y"
+                ):
+                    self._last_state = Loaded.already_run
+                    return Loaded.already_run
+
+        for s in Step.get_last(step):
+            if s < depends_on:
+                raise Exception(
+                    f"Step {step} depends on {depends_on}, but {depends_on} was not run yet."
+                )
+            if s.value.in_storage():
+                verbose = s is not Step.transcribe
+                data = self._store.load(s.value.filename, verbose)
+                if data:
+                    logger.info(f"Loaded step {s.value}")
+                    self._load_slides(data, verbose)
+                    self._last_state = Loaded.new
+                    return Loaded.new
+
+        logger.debug("No data to load")
+        return Loaded.none
 
     def save_temp_txt(self) -> Path:
         return self._store.temp_save(
@@ -152,11 +184,16 @@ class Slides(UserList):
 
     def save(self, step: Step):
         self._last_state = Loaded.in_memory
-        if step.value.in_storage():
-            self._store.save_json(step, [slide.to_dict() for slide in self.data])
-            if step is Step.transcribe:
+        meta = step.value
+        if meta.in_storage():
+            assert meta.filename is not None
+            self._store.save_json(
+                meta.filename, [slide.to_dict() for slide in self.data]
+            )
+            if meta is Step.transcribe:
                 return
-            if self._always_export_txt or step is Step.improve:
+            if self._always_export_txt or meta is Step.improve:
                 self._store.save_txt(
-                    step, "\n".join([repr(slide) + "\n" for slide in self.data])
+                    meta.filename,
+                    "\n".join([repr(slide) + "\n" for slide in self.data]),
                 )

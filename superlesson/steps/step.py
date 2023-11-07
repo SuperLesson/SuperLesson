@@ -49,7 +49,7 @@ class Step(Enum):
     def step(step: Step, depends_on: Optional[Step] = None):
         def decorator(func: Callable):
             def wrapper(instance, *args, **kwargs):
-                from superlesson.storage.store import Loaded
+                from superlesson.storage.slide import Loaded
 
                 match instance.slides.load(step, depends_on):
                     case Loaded.none:
