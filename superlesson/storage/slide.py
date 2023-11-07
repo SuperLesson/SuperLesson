@@ -21,7 +21,7 @@ TimeFrame = namedtuple("TimeFrame", ["start", "end"])
 class Slide:
     transcription: str
     timeframe: TimeFrame
-    png_path: Optional[Path] = None
+    tframe: Optional[Path] = None
     number: Optional[int] = None
     merged: bool = False
 
@@ -32,7 +32,7 @@ class Slide:
                 "start": self.timeframe.start,
                 "end": self.timeframe.end,
             },
-            "png_path": str(self.png_path),
+            "tframe": str(self.tframe),
             "number": self.number,
         }
 
@@ -115,13 +115,14 @@ class Slides(UserList):
     def _load_slide(slide_obj: dict) -> Slide:
         timeframe = slide_obj["timeframe"].values()
         assert len(timeframe) == 2, "Couldn't find timestamps"
-        png_path = slide_obj["png_path"]
-        if png_path is not None:
-            png_path = Path(png_path)
+        # TODO: remove this before releasing
+        tframe_path = slide_obj.get("tframe") or slide_obj.get("png_path")
+        if tframe_path is not None:
+            tframe_path = Path(tframe_path)
         slide = Slide(
             slide_obj["transcription"],
             TimeFrame(*timeframe),
-            png_path=png_path,
+            tframe=tframe_path,
             number=slide_obj["number"],
         )
         return slide
