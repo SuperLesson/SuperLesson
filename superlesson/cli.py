@@ -183,11 +183,11 @@ def run_docker():
 def check_differences(lesson: str, prev: Step, next: Step):
     lesson_root = find_lesson_root(lesson)
     prev_slides = Slides(lesson_root)
-    prev_slides.load(prev, prev, False)
+    prev_slides.load_step(prev)
     prev_file = prev_slides.save_temp_txt()
 
     next_slides = Slides(lesson_root)
-    next_slides.load(next, next, False)
+    next_slides.load_step(next)
     next_file = next_slides.save_temp_txt()
 
     logger.debug("Running wdiff")

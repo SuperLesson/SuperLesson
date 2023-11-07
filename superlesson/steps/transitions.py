@@ -155,7 +155,7 @@ class Transitions:
                 # teacher speaks before the slide changes
                 if time - ref.end < threshold:
                     improved[ti] = ref.end
-                    logger.debug(
+                    logger.info(
                         "Replaced transition time %s with %s (%s)",
                         seconds_to_timestamp(time),
                         seconds_to_timestamp(ref.end),
@@ -168,7 +168,7 @@ class Transitions:
                 # teacher silent after the slide changes
                 if ref.start - time < threshold:
                     improved[ti] = ref.start
-                    logger.debug(
+                    logger.info(
                         "Replaced transition time %s with %s (%s)",
                         seconds_to_timestamp(time),
                         seconds_to_timestamp(ref.start),
