@@ -61,7 +61,8 @@ class Annotate:
             self._sys_open(path)
             last_answer = get_slide_number_from_user(last_answer + 1)
             if last_answer == 0:
-                slide.number = None
+                logger.info("Slide will be hidden")
+                slide.number = -1
                 continue
             # if the user answered the last slide, we keep repeating
             # TODO:is there a better heuristic?

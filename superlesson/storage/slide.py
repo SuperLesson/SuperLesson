@@ -36,8 +36,14 @@ class Slide:
             "number": self.number,
         }
 
-    def __repr__(self):
-        return f"====== SLIDE {self.number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{fill(self.transcription, width=120)}"
+    def __str__(self):
+        if self.number is None:
+            number = "##"
+        elif self.number == -1:
+            number = "hidden"
+        else:
+            number = self.number + 1
+        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{fill(self.transcription, width=120)}"
 
 
 class Slides(UserList):
@@ -80,7 +86,7 @@ class Slides(UserList):
             return
 
         if not logger.isEnabledFor(logging.DEBUG):
-            logger.info(f"Merging slides {first} until {last}")
+            logger.info(f"Merging slides {first + 1} until {last + 1}")
         else:
             logger.debug(
                 dedent(
@@ -213,5 +219,5 @@ class Slides(UserList):
             if self._always_export_txt or meta is Step.improve:
                 self._store.save_txt(
                     meta.filename,
-                    "\n".join([repr(slide) + "\n" for slide in self.data]),
+                    "\n".join([str(slide) + "\n" for slide in self.data]),
                 )
