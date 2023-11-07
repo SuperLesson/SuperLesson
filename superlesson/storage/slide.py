@@ -154,10 +154,18 @@ class Slides(UserList):
             return True
         return False
 
+    @staticmethod
+    def valid_dependencies(step: Step, depends_on: Step) -> Sequence[Step]:
+        steps = Step.to_list()
+        last = steps.index(step) - 1
+        if depends_on is Step.transcribe:
+            return steps[last::-1]
+        else:
+            first = steps.index(depends_on) - 1
+            return steps[last:first:-1]
+
     def load_from_dependencies(self, step: Step, depends_on: Step) -> Optional[Step]:
-        for s in Step.get_last(step):
-            if s < depends_on:
-                return None
+        for s in self.valid_dependencies(step, depends_on):
             logging.debug(f"Trying to load {s.value.filename}")
             if s.value.in_storage() and self.load_step(s):
                 return s
