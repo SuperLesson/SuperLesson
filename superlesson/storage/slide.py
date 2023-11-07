@@ -2,7 +2,6 @@ import logging
 from collections.abc import Sequence
 from collections import UserList, namedtuple
 from dataclasses import dataclass
-from enum import Enum, unique
 from pathlib import Path
 from textwrap import dedent, fill
 from typing import Any, Optional
@@ -16,14 +15,6 @@ logger = logging.getLogger("superlesson")
 
 
 TimeFrame = namedtuple("TimeFrame", ["start", "end"])
-
-
-@unique
-class Loaded(Enum):
-    new = "loaded_new"
-    already_run = "already_loaded"
-    none = "not_loaded"
-    in_memory = "in_memory"
 
 
 @dataclass
@@ -54,7 +45,7 @@ class Slides(UserList):
         super().__init__()
         self.lesson_root = lesson_root
         self._store = Store(lesson_root)
-        self._last_state = None
+        self._step_in_memory = None
         self._always_export_txt = always_export_txt
 
     def merge(self, end: Optional[float] = None):
@@ -150,9 +141,13 @@ class Slides(UserList):
         data = self._store.load(meta.filename, verbose)
         if data is not None:
             self._load_slides(data, verbose)
-            self._last_state = Loaded.new
+            self._step_in_memory = step
             return True
         return False
+
+    def in_memory(self, step: Step) -> bool:
+        logger.debug(f"Step in memory: {self._step_in_memory}")
+        return self._step_in_memory is step
 
     @staticmethod
     def valid_dependencies(step: Step, depends_on: Step) -> Sequence[Step]:
@@ -167,14 +162,14 @@ class Slides(UserList):
     def load_from_dependencies(self, step: Step, depends_on: Step) -> Optional[Step]:
         for s in self.valid_dependencies(step, depends_on):
             logging.debug(f"Trying to load {s.value.filename}")
-            if s.value.in_storage() and self.load_step(s):
-                return s
+            if s.value.in_storage():
+                if self.in_memory(s):
+                    logger.debug("Using data from memory")
+                    return s
+                if self.load_step(s):
+                    return s
 
-    def load(self, step: Step, depends_on: Optional[Step] = None) -> Loaded:
-        if self._last_state is Loaded.in_memory and self.has_data():
-            logger.debug("Data already loaded")
-            return Loaded.in_memory
-
+    def load(self, step: Step, depends_on: Optional[Step] = None) -> Optional[Step]:
         if step.value.in_storage() and self.load_step(step):
             if (
                 input(
@@ -182,16 +177,23 @@ class Slides(UserList):
                 ).lower()
                 != "y"
             ):
-                self._last_state = Loaded.already_run
-                return Loaded.already_run
+                return step
+
+            if depends_on is None:
+                return None
 
         if depends_on is None:
-            return Loaded.none
+            raise Exception(
+                f'Step "{step.value.name}" has not been run yet and no dependencies were specified.'
+            )
 
-        if self.load_from_dependencies(step, depends_on):
-            return Loaded.new
-        else:
-            return Loaded.none
+        loaded = self.load_from_dependencies(step, depends_on)
+        if loaded is not None:
+            return loaded
+
+        raise Exception(
+            f'Step "{step.value.name}" depends on "{depends_on.value.name}", but "{depends_on.value.name}" has not been run yet.'
+        )
 
     def save_temp_txt(self) -> Path:
         return self._store.temp_save(
@@ -199,7 +201,7 @@ class Slides(UserList):
         )
 
     def save(self, step: Step):
-        self._last_state = Loaded.in_memory
+        self._step_in_memory = step
         meta = step.value
         if meta.in_storage():
             assert meta.filename is not None
