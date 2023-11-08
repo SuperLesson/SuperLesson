@@ -12,7 +12,6 @@ logger = logging.getLogger("superlesson")
 class Step(Enum):
     transcribe = "transcribe"
     merge_segments = "merge_segments"
-    verify_tbreaks_with_mpv = "verify_tbreaks_with_mpv"
     enumerate_slides = "enumerate_slides"
     replace_words = "replace_words"
     improve_punctuation = "improve_punctuation"

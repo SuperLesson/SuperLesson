@@ -17,7 +17,6 @@ repository = "https://github.com/SuperLesson/SuperLesson"
 superlesson = "superlesson.cli:main"
 transcribe = "superlesson.cli:transcribe_step"
 merge = "superlesson.cli:merge_step"
-verify = "superlesson.cli:verify_step"
 replace = "superlesson.cli:replace_step"
 improve = "superlesson.cli:improve_step"
 enumerate = "superlesson.cli:enumerate_step"
@@ -33,9 +32,6 @@ tqdm = "^4.66.1"
 
 [tool.poetry.group.tmarks.dependencies]
 pydub = "^0.25.1"
-
-[tool.poetry.group.verify.dependencies]
-python-mpv = "^1.0.4"
 
 [tool.poetry.group.improve.dependencies]
 python-dotenv = "^1.0.0"

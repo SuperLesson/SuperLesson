@@ -58,8 +58,6 @@ def main():
     transitions = Transitions(slides, lesson_files.transcription_source)
     transitions.merge_segments(args.use_silences)
     input("Press Enter to continue...")
-    transitions.verify_tbreaks_with_mpv()
-    input("Press Enter to continue...")
     annotate = Annotate(slides, lesson_files.lecture_notes)
     annotate.enumerate_slides_from_tframes()
     input("Press Enter to continue...")
@@ -213,11 +211,6 @@ def check_differences(lesson: str, prev: Step, next: Step):
 def merge_step():
     args, transitions = single_step_setup(Transitions)
     transitions.merge_segments(args.use_silences)
-
-
-def verify_step():
-    _, transitions = single_step_setup(Transitions)
-    transitions.verify_tbreaks_with_mpv()
 
 
 def replace_step():
