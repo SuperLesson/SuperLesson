@@ -133,35 +133,6 @@ class Transitions:
         ]  # convert to seconds
         return silences
 
-    @Step.step(Step.verify_tbreaks_with_mpv, Step.merge_segments)
-    def verify_tbreaks_with_mpv(self):
-        # TODO: parameterize time translation
-        time_translation = 6
-        relative_times = list(
-            filter(
-                lambda x: x < 0,
-                [
-                    slide.timeframe.start.total_seconds() - time_translation
-                    for slide in self.slides
-                ],
-            )
-        )
-
-        play_duration = 12
-        self._play_video_at_times(relative_times, play_duration)
-
-    def _play_video_at_times(self, times, duration):
-        import mpv
-        from time import sleep
-
-        player = mpv.MPV()
-        player.play(str(self._transcription_source.full_path))
-        player.wait_until_playing()
-        for _time in times:
-            logger.debug(f"Playing video at time {_time}")
-            player.seek(_time, reference="absolute", precision="exact")
-            sleep(duration)
-
     # EXTRACT AUDIO (t= 7 sec for each hour, rough average)
     @staticmethod
     def _extract_audio(
