@@ -143,38 +143,22 @@ class Transcribe:
 
     @Step.step(Step.replace_words, Step.merge_segments)
     def replace_words(self):
-        data_folder = self._transcription_source.path / "data"
-        if not data_folder.exists():
+        replacements_path = self._transcription_source.path / "data/replacements.txt"
+        if not replacements_path.exists():
             logger.warning(
-                f"{data_folder} doesn't exist, so no replacements will be done"
+                f"{replacements_path} doesn't exist, so no replacements will be done"
             )
             return
 
-        # TODO: make this portable
-        # INPUT DATA FOR SUBSTITUTION
-        input_path = data_folder / "resp.txt"
-        with open(input_path, "r") as file:
-            prompt_words = {}
-            for line in file:
-                parts = line.split("->")  # Split each line on the "->"
-                if len(parts) == 2:  # Make sure there are actually two parts
-                    # Remove any leading/trailing whitespace and quotation marks
-                    key = parts[0].strip().strip('"')
-                    # Check if there"s a word in parentheses at the end, and if so, remove it
-                    value = parts[1].split("(")[0].strip().strip('"')
-                    prompt_words[key] = value  # Add to dictionary
-
-        for i in range(len(self.slides)):
-            transcription = self.slides[i].transcription
-            replaced = self._replace_strings(prompt_words, transcription)
-            self.slides[i].transcription = replaced
-
-    # SUBSTITUTE
-    @staticmethod
-    def _replace_strings(dictionary, string):
-        for old_string, new_string in dictionary.items():
-            string = string.replace(old_string, new_string)
-        return string
+        lines = replacements_path.read_text().split("\n")
+        for line in lines:
+            if line.strip() == "":
+                logger.debug("Skipping empty line")
+                continue
+            word, rep = [term.strip().strip('"').strip() for term in line.split("->")]
+            logger.debug("Replacing %s with %s", word, rep)
+            for slide in self.slides:
+                slide.transcription = slide.transcription.replace(word, rep)
 
     @Step.step(Step.improve_punctuation, Step.merge_segments)
     def improve_punctuation(self):

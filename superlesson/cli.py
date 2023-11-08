@@ -195,6 +195,8 @@ def check_differences(lesson: str, prev: Step, next: Step):
     next_slides.load(next, next, False)
     next_file = next_slides.save_temp_txt()
 
+    logger.debug("Running wdiff")
+
     subprocess.run(
         " ".join(
             [
