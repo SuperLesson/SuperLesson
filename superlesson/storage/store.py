@@ -1,13 +1,11 @@
 import json as json_lib
 import logging
 import re
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
 from superlesson.steps.step import Step
-
 
 logger = logging.getLogger("superlesson")
 
@@ -36,10 +34,6 @@ class Store:
     def __init__(self, lesson_root: Path):
         self._lesson_root = lesson_root
         self._storage_root = lesson_root / ".data"
-
-    @classmethod
-    def txt_files(cls) -> list[str]:
-        return [f"{file}.txt" for file in cls._storage_map.values()]
 
     def in_storage(self, step: Step) -> bool:
         return self._storage_map.get(step) is not None
@@ -128,8 +122,9 @@ class Store:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".txt", delete=False
         ) as temp_file:
-            temp_file.write(txt_data)
             temp_path = Path(temp_file.name)
+            logger.debug(f"Saving temp file to {temp_file.name}")
+            temp_file.write(txt_data)
 
         return temp_path
 

@@ -5,9 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from .store import Store
 from .utils import find_lesson_root
-
 
 logger = logging.getLogger("superlesson")
 
@@ -84,16 +82,20 @@ class LessonFiles:
             return self._files
 
         logger.info("Searching for files...")
-        ignored = list(Store.txt_files())
-        ignored.append("annotations.pdf")
         for file in self.lesson_root.iterdir():
-            if file.name in ignored:
+            if file.name == "annotations.pdf":
+                continue
+            if file.is_dir():
+                continue
+            if file.name.startswith("."):
+                continue
+            if file.suffix == ".txt":
                 continue
             try:
                 self._files.append(LessonFile(file.name, self.lesson_root))
                 logger.debug(f"Found file: {file}")
             except ValueError:
-                pass
+                logger.debug(f"Skipping file: {file}")
 
         # TODO: test for duplicate file types
 
