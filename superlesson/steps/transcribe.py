@@ -143,7 +143,7 @@ class Transcribe:
 
     @Step.step(Step.replace_words, Step.merge_segments)
     def replace_words(self):
-        replacements_path = self._transcription_source.path / "data/replacements.txt"
+        replacements_path = self._transcription_source.path / "replacements.txt"
         if not replacements_path.exists():
             logger.warning(
                 f"{replacements_path} doesn't exist, so no replacements will be done"
