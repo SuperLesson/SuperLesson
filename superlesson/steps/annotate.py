@@ -24,10 +24,15 @@ class Annotate:
 
         max_slide_number = len(PdfReader(self._lecture_notes.full_path).pages)
 
-        def get_slide_number_from_user(default: int) -> int:
-            user_input = input(
-                f"What is the number of this slide? (default: {default}) "
-            )
+        def get_slide_number_from_user(default: int, is_first: bool = False) -> int:
+            if is_first:
+                user_input = input(
+                    f"What is the number of the first slide? (default: {default}) "
+                )
+            else:
+                user_input = input(
+                    f"What is the number of this slide? (default: {default}) "
+                )
 
             if user_input == "":
                 return default
@@ -47,21 +52,24 @@ class Annotate:
             )
             return default
 
-        last_answer = 0
-        for i, slide in enumerate(self.slides):
+        last_answer = get_slide_number_from_user(1, True)
+        if last_answer > max_slide_number:
+            last_answer = max_slide_number
+        self.slides[0].number = last_answer
+
+        for i in range(1, len(self.slides)):
+            slide = self.slides[i]
             path = slide.png_path
             assert path is not None, f"Slide {i} doesn't have a png_path"
             self._sys_open(path)
-            number = get_slide_number_from_user(last_answer + 1)
-            if number == 0:
+            last_answer = get_slide_number_from_user(last_answer + 1)
+            if last_answer == 0:
                 slide.number = None
                 continue
             # if the user answered the last slide, we keep repeating
             # TODO:is there a better heuristic?
-            if number >= max_slide_number:
+            if last_answer > max_slide_number:
                 last_answer = max_slide_number
-            else:
-                last_answer = number
             slide.number = last_answer - 1
 
     @staticmethod
