@@ -55,7 +55,8 @@ class Annotate:
         last_answer = get_slide_number_from_user(1, True)
         if last_answer > max_slide_number:
             last_answer = max_slide_number
-        self.slides[0].number = last_answer
+        logger.debug("First slide number: %d", last_answer - 1)
+        self.slides[0].number = last_answer - 1
 
         for i in range(1, len(self.slides)):
             slide = self.slides[i]
@@ -70,6 +71,7 @@ class Annotate:
             # TODO:is there a better heuristic?
             if last_answer > max_slide_number:
                 last_answer = max_slide_number
+            logger.debug("slide number: %d", last_answer - 1)
             slide.number = last_answer - 1
 
     @staticmethod
