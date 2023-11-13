@@ -9,9 +9,7 @@ SL also uses ChatGPT to improve transcriptions.
 
 In order to access those services, the following keys are needed:
 ```raw
-OPENAI_TOKEN=<your_token>
-# optional
-#OPENAI_ORG=<your_org>
+OPENAI_API_KEY=<your_token>
 REPLICATE_API_TOKEN=<your_token>
 ```
 

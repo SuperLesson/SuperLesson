@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -35,8 +36,6 @@ class Transcribe:
 
     @step(Step.transcribe)
     def single_file(self, model_size: str, local: bool):
-        from os import getenv
-
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
         if not audio_path.exists():
@@ -44,7 +43,7 @@ class Transcribe:
 
         bench_start = datetime.now()
 
-        if not local and getenv("REPLICATE_API_TOKEN"):
+        if not local and os.getenv("REPLICATE_API_TOKEN"):
             s3_url = self._upload_file_to_s3(audio_path)
 
             if not model_size.startswith("large"):
@@ -121,14 +120,12 @@ class Transcribe:
 
     @classmethod
     def _local_transcription(cls, transcription_path: Path, model_size: str):
-        from os import cpu_count
-
         from faster_whisper import WhisperModel
 
         if cls._has_nvidia_gpu():
             model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
-            threads = cpu_count() or 4
+            threads = os.cpu_count() or 4
             model = WhisperModel(
                 model_size, device="cpu", cpu_threads=threads, compute_type="auto"
             )
@@ -215,8 +212,8 @@ class Transcribe:
             timestamp_last = 0  # current timestamp
             last_burst = 0.0  # time of last iteration burst aka chunk
             set_delay = (
-                0.1
-            )  # max time it takes to iterate chunk & minimum time between chunks
+                0.1  # max time it takes to iterate chunk & minimum time between chunks
+            )
             jobs = []
             transcription_segments = []
             for segment in segments:
@@ -288,7 +285,7 @@ class Transcribe:
 
     @step(Step.improve, Step.merge)
     def improve_punctuation(self):
-        self._load_openai_key()
+        from openai import OpenAI, OpenAIError
 
         context = """The following is a transcription of a lecture.
         The transcription is complete, but it has formatting and punctuation mistakes.
@@ -304,12 +301,19 @@ class Transcribe:
 
         bench_start = datetime.now()
 
+        try:
+            openai_client = OpenAI()
+        except OpenAIError as e:
+            raise Exception(
+                "Please review README.md for instructions on how to set up your OpenAI token"
+            ) from e
+
         for slide in self.slides:
             text = slide.transcription
             total_tokens = self._count_tokens(text)
             if total_tokens <= max_input_tokens:
                 slide.transcription = self._improve_text_with_chatgpt(
-                    text, sys_message, max_input_tokens
+                    openai_client, text, sys_message
                 )
                 continue
 
@@ -330,22 +334,13 @@ class Transcribe:
         bench_duration = datetime.now() - bench_start
         logger.info(f"Transcription took {bench_duration}")
 
-    @staticmethod
-    def _load_openai_key():
-        import os
-
-        import openai
-
-        openai.organization = os.getenv("OPENAI_ORG")
-        openai.api_key = os.getenv("OPENAI_TOKEN")
-
     @classmethod
-    def _improve_text_with_chatgpt(cls, text, sys_message, max_tokens):
+    def _improve_text_with_chatgpt(cls, client, text, sys_message):
         messages = [
             sys_message,
             {"role": "user", "content": text},
         ]
-        improved_text = cls._try_chat_completion_until_successful(messages)
+        improved_text = cls._try_chat_completion_until_successful(client, messages)
 
         if improved_text is None:
             return text
@@ -410,10 +405,8 @@ class Transcribe:
         return chunks
 
     @staticmethod
-    def _ai(messages, temperature=0):
-        import openai
-
-        response = openai.ChatCompletion.create(
+    def _ai(client, messages, temperature=0):
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             # model="gpt-4",
             messages=messages,
@@ -424,12 +417,13 @@ class Transcribe:
 
     # error handling is not correct
     @classmethod
-    def _try_chat_completion_until_successful(cls, messages, max_tries=5):
+    def _try_chat_completion_until_successful(cls, client, messages, max_tries=5):
         for tries in range(max_tries):
             try:
                 logger.info("Asking GPT to improve punctuation")
-                result = cls._ai(messages, 0.1)
-                return result["choices"][0]["message"]["content"]
+                completion = cls._ai(client, messages, 0.1)
+                print("output")
+                return completion.choices[0].message.content
             except Exception as e:
                 logger.info(f"Retrying {tries} out of {max_tries}")
                 logger.debug("Error:", e)
