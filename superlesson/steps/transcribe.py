@@ -325,9 +325,7 @@ class Transcribe:
             gpt_chunks = []
             for chunk in self._split_text(text, max_input_tokens):
                 gpt_chunks.append(
-                    self._improve_text_with_chatgpt(
-                        chunk, sys_message, max_input_tokens
-                    )
+                    self._improve_text_with_chatgpt(openai_client, chunk, sys_message)
                 )
             slide.transcription = " ".join(gpt_chunks)
 
