@@ -190,9 +190,7 @@ class Slides(UserList):
                 return None
 
         if depends_on is None:
-            raise Exception(
-                f'Step "{step.value.name}" has not been run yet and no dependencies were specified.'
-            )
+            return None
 
         loaded = self.load_from_dependencies(step, depends_on)
         if loaded is not None:
