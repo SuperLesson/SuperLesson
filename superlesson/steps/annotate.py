@@ -103,7 +103,7 @@ class Annotate:
         for i, slide in enumerate(self.slides):
             number = slide.number
 
-            if number is None:
+            if number < 0 or number is None:
                 continue
             logger.debug(f"Adding slide {number} to annotated PDF")
             merger.append(fileobj=pdf, pages=(number, number + 1))
