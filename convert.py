@@ -57,7 +57,7 @@ def nearest(tframes, timestamp):
 
 
 def main():
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     lesson = argv[1]
     lesson_files = LessonFiles(lesson)
