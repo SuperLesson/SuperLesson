@@ -209,7 +209,7 @@ class Annotate:
         #     current_text = next_text
         # formatted_texts.append(current_text)
 
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
                 "\u21E2 \n#pagebreak()\n \u21E2".join(
