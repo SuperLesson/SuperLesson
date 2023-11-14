@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 import tempfile
 from pathlib import Path
@@ -7,6 +8,12 @@ from superlesson.storage import LessonFile, Slides
 from .step import Step, step
 
 logger = logging.getLogger("superlesson")
+
+
+@dataclass
+class Page:
+    text: str
+    number: int
 
 
 class Annotate:
@@ -97,7 +104,12 @@ class Annotate:
         #     current = next
         # pages.append(current)
         for slide in self.slides:
-            pages.append(slide.transcription)
+            number = slide.number
+
+            if number < 0 or number is None:
+                continue
+
+            pages.append(Page(slide.transcription, number))
 
         pdf = PdfReader(self._presentation.full_path)
 
@@ -113,11 +125,8 @@ class Annotate:
         )
 
         merger = PdfWriter()
-        for i, slide in enumerate(self.slides):
-            number = slide.number
-
-            if number < 0 or number is None:
-                continue
+        for i, page in enumerate(pages):
+            number = page.number
             logger.debug(f"Adding slide {number} to annotated PDF")
             merger.append(fileobj=pdf, pages=(number, number + 1))
             page = merger.pages[-1]
@@ -176,7 +185,7 @@ class Annotate:
         return current, next
 
     @classmethod
-    def _compile_with_typst(cls, pages: list[str], width: int = 11) -> str:
+    def _compile_with_typst(cls, pages: list[Page], width: int = 11) -> str:
         import typst
 
         preamble = f"""
@@ -216,9 +225,9 @@ class Annotate:
         with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
-                "\u21E2 \n#pagebreak()\n \u21E2".join([page for page in pages]).encode(
-                    "utf-8"
-                )
+                "\u21E2 \n#pagebreak()\n \u21E2".join(
+                    [page.text for page in pages]
+                ).encode("utf-8")
             )
             temp_file_name = f.name
             logger.debug(f"Typst temp file saved as {temp_file_name}")
