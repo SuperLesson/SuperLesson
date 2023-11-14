@@ -86,13 +86,26 @@ class Annotate:
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter, Transformation
 
+        pages = []
+        # FIXME: (#110) typst complains about invalid syntax in some documents
+        # current = self.slides[0].transcription
+        # for i in range(1, len(self.slides)):
+        #     current, next = self.fade_slide(
+        #         current, self.slides[i].transcription
+        #     )
+        #     pages.append(current)
+        #     current = next
+        # pages.append(current)
+        for slide in self.slides:
+            pages.append(slide.transcription)
+
         pdf = PdfReader(self._presentation.full_path)
 
         page_width = pdf.pages[0].mediabox.width
         # pt -> inch
         width_in = page_width / 72
         logger.debug(f"First page width: {width_in} inches")
-        transcription_pdf = self._transcription_to_pdf(width=width_in)
+        transcription_pdf = self._compile_with_typst(pages, width=width_in)
 
         trans = PdfReader(transcription_pdf)
         op = (
@@ -162,7 +175,8 @@ class Annotate:
 
         return current, next
 
-    def _transcription_to_pdf(self, width: int = 11) -> str:
+    @classmethod
+    def _compile_with_typst(cls, pages: list[str], width: int = 11) -> str:
         import typst
 
         preamble = f"""
@@ -198,23 +212,13 @@ class Annotate:
 )
 
 """
-        # FIXME: (#110) typst complains about invalid syntax in some documents
-        # formatted_texts: list[str] = []
-        # current_text = self.slides[0].transcription
-        # for next in range(1, len(self.slides)):
-        #     current_text, next_text = self.fade_slide(
-        #         current_text, self.slides[next].transcription
-        #     )
-        #     formatted_texts.append(current_text)
-        #     current_text = next_text
-        # formatted_texts.append(current_text)
 
         with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
             f.write(preamble.encode("utf-8"))
             f.write(
-                "\u21E2 \n#pagebreak()\n \u21E2".join(
-                    [slide.transcription for slide in self.slides]
-                ).encode("utf-8")
+                "\u21E2 \n#pagebreak()\n \u21E2".join([page for page in pages]).encode(
+                    "utf-8"
+                )
             )
             temp_file_name = f.name
             logger.debug(f"Typst temp file saved as {temp_file_name}")
