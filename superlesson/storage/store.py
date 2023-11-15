@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
+from .utils import format_transcription
+
 logger = logging.getLogger("superlesson")
 
 
@@ -27,16 +29,10 @@ class Store:
         return self._lesson_root / f"{filename}.txt"
 
     def _parse_txt(self, txt_path: Path) -> list[str]:
-        transcriptions = re.split(r"====== SLIDE .* ======", txt_path.read_text())[1:]
-
-        for i, text in enumerate(transcriptions):
-            text = text.strip()
-            text = re.sub(r"\n\n", "<br>", text)
-            text = re.sub(r"\s+", " ", text)
-            text = re.sub(r"<br>", "\n\n", text)
-            transcriptions[i] = text
-
-        return transcriptions
+        return [
+            format_transcription(text)
+            for text in re.split(r"====== SLIDE .* ======", txt_path.read_text())[1:]
+        ]
 
     def _parse_json(self, json_path: Path) -> list[dict[str, Any]]:
         json_data = json_path.read_text()

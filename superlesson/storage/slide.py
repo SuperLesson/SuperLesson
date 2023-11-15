@@ -9,7 +9,7 @@ from typing import Any, Optional
 from superlesson.steps.step import Step
 
 from .store import Store
-from .utils import timeframe_to_timestamp
+from .utils import format_transcription, timeframe_to_timestamp
 
 logger = logging.getLogger("superlesson")
 
@@ -43,7 +43,7 @@ class Slide:
             number = "hidden"
         else:
             number = self.number + 1
-        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{fill(self.transcription, width=120)}"
+        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{format_transcription(self.transcription)}"
 
 
 class Slides(UserList):
