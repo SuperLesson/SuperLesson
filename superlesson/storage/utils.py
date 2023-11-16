@@ -2,26 +2,30 @@ import logging
 from datetime import timedelta
 from pathlib import Path
 from textwrap import fill
+import re
 
 logger = logging.getLogger("superlesson")
 
 
 def format_transcription(text: str) -> str:
     lines = text.splitlines()
-    formatted = []
+    paragraphs = []
+    current_para = []
     for line in lines:
         if line == "":
-            if len(formatted) and formatted[-1] != "\n\n":
-                formatted.append("\n\n")
+            if current_para:
+                paragraphs.append(current_para)
+                current_para = []
         else:
-            formatted.append(fill(line, width=120, tabsize=4))
-    if not len(formatted):
-        return ""
+            line = re.sub(r"\s+", " ", line)
+            current_para.append(line)
 
-    if formatted[-1] == "\n\n":
-        return "".join(formatted[:-1])
+    if current_para:
+        paragraphs.append(current_para)
 
-    return "".join(formatted)
+    return "\n\n".join(
+        [fill(" ".join(para), width=120, tabsize=4) for para in paragraphs]
+    )
 
 
 def seconds_to_timestamp(s: float) -> str:
