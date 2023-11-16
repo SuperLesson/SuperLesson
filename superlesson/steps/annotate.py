@@ -103,6 +103,31 @@ class Annotate:
         #     pages.append(current)
         #     current = next
         # pages.append(current)
+
+        pdf = PdfReader(self._presentation.full_path)
+
+        page_width = pdf.pages[0].mediabox.width
+
+        x_translation = (1 - 0.7) / 2 * page_width
+        logger.debug("Translating by %.2f", x_translation / 72)
+
+        op = Transformation().scale(sx=0.7, sy=0.7).translate(tx=x_translation, ty=0)
+
+        temp_pdf = PdfWriter()
+
+        for page in pdf.pages:
+            page.mediabox.upper_right = (
+                page.mediabox.right,
+                page.mediabox.top * 0.7,  # cut top margin
+            )
+            page.add_transformation(op)
+            temp_pdf.add_page(page)
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        small_pdf_path = temp_file.name
+        temp_pdf.write(small_pdf_path)
+        logger.debug(f"scaled PDF saved as {small_pdf_path}")
+
         for slide in self.slides:
             number = slide.number
 
@@ -111,32 +136,17 @@ class Annotate:
 
             pages.append(Page(slide.transcription, number))
 
-        pdf = PdfReader(self._presentation.full_path)
-
-        page_width = pdf.pages[0].mediabox.width
         # pt -> inch
-        width_in = page_width / 72
-        logger.debug(f"First page width: {width_in} inches")
+        width_in = page_width // 72
         transcription_pdf = self._compile_with_typst(pages, width=width_in)
-
-        trans = PdfReader(transcription_pdf)
-        op = (
-            Transformation().scale(sx=0.7, sy=0.7).translate(tx=page_width * 0.15, ty=0)
-        )
 
         merger = PdfWriter()
         for i, page in enumerate(pages):
             number = page.number
             logger.debug(f"Adding slide {number} to annotated PDF")
-            merger.append(fileobj=pdf, pages=(number, number + 1))
-            page = merger.pages[-1]
-            page.mediabox.upper_right = (
-                page.mediabox.right,
-                page.mediabox.top * 0.7,
-            )  # cropping the top of each page
-            page.add_transformation(op)
+            merger.append(small_pdf_path, pages=(number, number + 1))
             logger.debug(f"Adding transcription to slide {i}")
-            merger.append(fileobj=trans, pages=(i, i + 1))
+            merger.append(transcription_pdf, pages=(i, i + 1))
 
         output = self._presentation.path / "annotations.pdf"
         merger.write(output)
@@ -185,7 +195,7 @@ class Annotate:
         return current, next
 
     @classmethod
-    def _compile_with_typst(cls, pages: list[Page], width: int = 11) -> str:
+    def _compile_with_typst(cls, pages: list[Page], width: int = 10) -> str:
         import typst
 
         preamble = f"""
