@@ -27,14 +27,16 @@ class Annotate:
 
         max_slide_number = len(PdfReader(self._presentation.full_path).pages)
 
-        def get_slide_number_from_user(default: int, is_last: bool = False) -> int:
+        def get_slide_number_from_user(
+            default: int = max_slide_number - 1, is_last: bool = False
+        ) -> int:
             if is_last:
                 user_input = input(
-                    f"What is the number of the last slide? (default: {default}) "
+                    f"What is the number of the last slide? (default: {default + 1}) "
                 )
             else:
                 user_input = input(
-                    f"What is the number of this slide? (default: {default}) "
+                    f"What is the number of this slide? (default: {default + 1}) "
                 )
 
             if user_input == "":
@@ -43,19 +45,20 @@ class Annotate:
                 return 0
 
             try:
-                number = int(user_input)
+                number = int(user_input) - 1
             except ValueError:
+                logger.warning(f"Invalid input: {user_input}")
                 return default
 
-            if 0 < number < max_slide_number + 1:
+            if -1 < number < max_slide_number:
                 return number
 
             logger.warning(
-                f"There's no such slide number: {number} (should be between 1 and {max_slide_number})"
+                f"There's no such slide number: {number + 1} (should be between 1 and {max_slide_number})"
             )
             return default
 
-        last_answer = 0
+        last_answer = -1
         for i, slide in enumerate(self.slides):
             path = slide.tframe
             if path is not None:
@@ -63,19 +66,25 @@ class Annotate:
                 number = get_slide_number_from_user(last_answer + 1)
             else:
                 assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
-                number = get_slide_number_from_user(last_answer + 1, True)
+                number = get_slide_number_from_user(is_last=True)
+
             if number == 0:
                 logger.info("Slide will be hidden")
+                # keep the default value for the next slide
                 slide.number = -1
-                continue
-            # if the user answered the last slide, we keep repeating
-            # TODO:is there a better heuristic?
-            if number > max_slide_number:
-                last_answer = max_slide_number
             else:
-                last_answer = number
-            logger.debug("slide number: %d", last_answer - 1)
-            slide.number = last_answer - 1
+                # keep repeating
+                if number >= max_slide_number:
+                    logger.warning(
+                        f"{number + 1} is greater than the number of slides provided ({max_slide_number}), using {max_slide_number}"
+                    )
+                    last_answer = max_slide_number - 1
+                else:
+                    if number == max_slide_number - 1:
+                        logger.info("Reached last slide on presentation")
+                    last_answer = number
+                logger.debug("slide number: %d", last_answer)
+                slide.number = last_answer
 
     @staticmethod
     def _sys_open(path: Path) -> int:
