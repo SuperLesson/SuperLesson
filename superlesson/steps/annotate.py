@@ -21,6 +21,7 @@ class Page:
 @unique
 class Command(Enum):
     none = "n"
+    back = "b"
     number = "number"
 
 
@@ -56,6 +57,8 @@ class Annotate:
                 return Answer(Command.number, default)
             elif user_input.startswith("n"):
                 return Answer(Command.none, None)
+            elif user_input.startswith("b"):
+                return Answer(Command.back, None)
 
             try:
                 number = int(user_input) - 1
@@ -70,8 +73,10 @@ class Annotate:
             )
             return Answer(Command.number, default)
 
+        i = 0
         last_answer = -1
-        for i, slide in enumerate(self.slides):
+        while i < len(self.slides):
+            slide = self.slides[i]
             path = slide.tframe
             if path is not None:
                 self._sys_open(path)
@@ -90,6 +95,16 @@ class Annotate:
                 logger.info("Slide will be hidden")
                 # keep the default value for the next slide
                 slide.number = -1
+                i += 1
+            elif answer.command is Command.back:
+                logger.info("Going back to previous slide")
+                # suggest the last slide default again
+                if last_answer >= 0:
+                    last_answer -= 1
+                if i > 0:
+                    i -= 1
+                else:
+                    logger.warning("Can't go back, already at the first slide")
             elif answer.command is Command.number:
                 number = answer.value
                 assert isinstance(number, int)
@@ -105,6 +120,7 @@ class Annotate:
                     last_answer = number
                 logger.debug("slide number: %d", last_answer)
                 slide.number = last_answer
+                i += 1
 
     @staticmethod
     def _sys_open(path: Path) -> int:
