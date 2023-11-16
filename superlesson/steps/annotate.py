@@ -63,7 +63,12 @@ class Annotate:
             path = slide.tframe
             if path is not None:
                 self._sys_open(path)
-                number = get_slide_number_from_user(last_answer + 1)
+                if last_answer < max_slide_number - 1:
+                    suggestion = last_answer + 1
+                else:
+                    logger.debug("Repeating last suggestion")
+                    suggestion = max_slide_number - 1
+                number = get_slide_number_from_user(suggestion)
             else:
                 assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
                 number = get_slide_number_from_user(is_last=True)
