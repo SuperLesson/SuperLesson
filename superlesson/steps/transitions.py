@@ -6,7 +6,7 @@ from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame
-from superlesson.storage.utils import seconds_to_timestamp, timeframe_to_timestamp
+from superlesson.storage.utils import seconds_to_timestamp
 
 from .step import Step, step
 
@@ -110,7 +110,7 @@ class Transitions:
 
         logger.debug(
             "Period end times: %s",
-            [timeframe_to_timestamp(end_time) for end_time in period_end_times],
+            period_end_times,
         )
         return period_end_times
 
