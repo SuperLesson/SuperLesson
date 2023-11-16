@@ -1,7 +1,9 @@
 import logging
 import tempfile
 from dataclasses import dataclass
+from enum import Enum, unique
 from pathlib import Path
+from typing import NamedTuple, Union
 
 from superlesson.storage import LessonFile, Slides
 
@@ -14,6 +16,15 @@ logger = logging.getLogger("superlesson")
 class Page:
     text: str
     number: int
+
+
+@unique
+class Command(Enum):
+    none = "n"
+    number = "number"
+
+
+Answer = NamedTuple("Answer", [("command", Command), ("value", Union[int, None])])
 
 
 class Annotate:
@@ -29,34 +40,35 @@ class Annotate:
 
         def get_slide_number_from_user(
             default: int = max_slide_number - 1, is_last: bool = False
-        ) -> int:
+        ) -> Answer:
+            # TODO: (#111) Remove this once we capture tframes for all slides
             if is_last:
                 user_input = input(
                     f"What is the number of the last slide? (default: {default + 1}) "
-                )
+                ).lower()
             else:
                 user_input = input(
                     f"What is the number of this slide? (default: {default + 1}) "
-                )
+                ).lower()
 
+            # TODO: (3.10) use match
             if user_input == "":
-                return default
-            elif user_input.lower().startswith("n"):
-                return 0
+                return Answer(Command.number, default)
+            elif user_input.startswith("n"):
+                return Answer(Command.none, None)
 
             try:
                 number = int(user_input) - 1
             except ValueError:
-                logger.warning(f"Invalid input: {user_input}")
-                return default
+                return Answer(Command.number, default)
 
             if -1 < number < max_slide_number:
-                return number
+                return Answer(Command.number, number)
 
             logger.warning(
                 f"There's no such slide number: {number + 1} (should be between 1 and {max_slide_number})"
             )
-            return default
+            return Answer(Command.number, default)
 
         last_answer = -1
         for i, slide in enumerate(self.slides):
@@ -68,16 +80,19 @@ class Annotate:
                 else:
                     logger.debug("Repeating last suggestion")
                     suggestion = max_slide_number - 1
-                number = get_slide_number_from_user(suggestion)
+                answer = get_slide_number_from_user(suggestion)
             else:
                 assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
-                number = get_slide_number_from_user(is_last=True)
+                answer = get_slide_number_from_user(is_last=True)
 
-            if number == 0:
+            # TODO: (3.10) use match
+            if answer.command is Command.none:
                 logger.info("Slide will be hidden")
                 # keep the default value for the next slide
                 slide.number = -1
-            else:
+            elif answer.command is Command.number:
+                number = answer.value
+                assert isinstance(number, int)
                 # keep repeating
                 if number >= max_slide_number:
                     logger.warning(
