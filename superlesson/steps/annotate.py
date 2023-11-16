@@ -107,18 +107,46 @@ class Annotate:
         pdf = PdfReader(self._presentation.full_path)
 
         page_width = pdf.pages[0].mediabox.width
+        page_height = pdf.pages[0].mediabox.height
 
+        logger.debug(f"Original page size: {page_width} x {page_height}")
+
+        def is_rectangle(width: float, height: float) -> bool:
+            page_ratio = width / height
+            squarish = 4 / 3
+            default = 16 / 9
+            # let's forgive badly cropped pages
+            tolerance = 0.1
+            # we don't want to use a range percentage as this is not linear
+            return squarish * (1 - tolerance) < page_ratio < default * (1 + tolerance)
+
+        if is_rectangle(page_width, page_height):
+            logger.debug("Resizing to 10 inches")
+            default_size = 10 * 72  # 10 inches
+            ratio = default_size / page_width
+            logger.debug("Scaling by %.2f", ratio)
+            page_width = default_size
+        else:
+            ratio = 1
+            logger.debug("Page aspect ratio is non-standard, scaling by 1")
+
+        # as page_width is already scaled, we only need to translate in relation to the 70% scale
+        # we will move halfway between the whitespace to the right
         x_translation = (1 - 0.7) / 2 * page_width
         logger.debug("Translating by %.2f", x_translation / 72)
 
-        op = Transformation().scale(sx=0.7, sy=0.7).translate(tx=x_translation, ty=0)
+        op = (
+            Transformation()
+            .scale(sx=0.7 * ratio, sy=0.7 * ratio)
+            .translate(tx=x_translation, ty=0)
+        )
 
         temp_pdf = PdfWriter()
 
         for page in pdf.pages:
             page.mediabox.upper_right = (
-                page.mediabox.right,
-                page.mediabox.top * 0.7,  # cut top margin
+                page.mediabox.right * ratio,
+                page.mediabox.top * 0.7 * ratio,  # cut top margin
             )
             page.add_transformation(op)
             temp_pdf.add_page(page)
