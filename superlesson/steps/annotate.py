@@ -60,18 +60,20 @@ class Annotate:
             path = slide.tframe
             if path is not None:
                 self._sys_open(path)
-                last_answer = get_slide_number_from_user(last_answer + 1)
+                number = get_slide_number_from_user(last_answer + 1)
             else:
                 assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
-                last_answer = get_slide_number_from_user(last_answer + 1, True)
-            if last_answer == 0:
+                number = get_slide_number_from_user(last_answer + 1, True)
+            if number == 0:
                 logger.info("Slide will be hidden")
                 slide.number = -1
                 continue
             # if the user answered the last slide, we keep repeating
             # TODO:is there a better heuristic?
-            if last_answer > max_slide_number:
+            if number > max_slide_number:
                 last_answer = max_slide_number
+            else:
+                last_answer = number
             logger.debug("slide number: %d", last_answer - 1)
             slide.number = last_answer - 1
 
