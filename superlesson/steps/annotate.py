@@ -12,6 +12,10 @@ from .step import Step, step
 logger = logging.getLogger("superlesson")
 
 
+class InvalidInputError(Exception):
+    """Raised when the user inputs an invalid value"""
+
+
 @dataclass
 class Page:
     text: str
@@ -62,16 +66,26 @@ class Annotate:
 
             try:
                 number = int(user_input) - 1
-            except ValueError:
-                return Answer(Command.number, default)
+            except ValueError as e:
+                if not user_input.startswith("n"):
+                    logger.warning(f"Invalid input: {user_input}")
 
-            if -1 < number < max_slide_number:
-                return Answer(Command.number, number)
+                if default == 0:
+                    print(
+                        f"Type the number of the current slide (1 to {max_slide_number}) or (n)ext to skip the current slide"
+                    )
+                else:
+                    print(
+                        f"Type the number of the current slide (1 to {max_slide_number}), (n)ext to skip the current slide, or (b)ack to redo the last slide"
+                    )
+                raise InvalidInputError from e
 
-            logger.warning(
-                f"There's no such slide number: {number + 1} (should be between 1 and {max_slide_number})"
-            )
-            return Answer(Command.number, default)
+            if number < 0 or number >= max_slide_number:
+                raise InvalidInputError(
+                    f"Invalid slide number: {number + 1} (should be between 1 and {max_slide_number})"
+                )
+
+            return Answer(Command.number, number)
 
         i = 0
         last_answer = -1
@@ -85,10 +99,20 @@ class Annotate:
                 else:
                     logger.debug("Repeating last suggestion")
                     suggestion = max_slide_number - 1
-                answer = get_slide_number_from_user(suggestion)
+                try:
+                    answer = get_slide_number_from_user(suggestion)
+                except InvalidInputError as e:
+                    logger.warning(e)
+                    logger.warning("Repeating last slide")
+                    continue
             else:
                 assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
-                answer = get_slide_number_from_user(is_last=True)
+                try:
+                    answer = get_slide_number_from_user(is_last=True)
+                except InvalidInputError as e:
+                    logger.warning(e)
+                    logger.warning("Repeating last slide")
+                    continue
 
             # TODO: (3.10) use match
             if answer.command is Command.none:
