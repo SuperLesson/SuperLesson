@@ -35,12 +35,6 @@ def seconds_to_timestamp(s: float) -> str:
     return timestamp
 
 
-def timeframe_to_timestamp(timeframe: tuple[float, float]) -> str:
-    start = seconds_to_timestamp(timeframe[0])
-    end = seconds_to_timestamp(timeframe[1])
-    return f"{start} - {end}"
-
-
 def find_lesson_root(lesson: str) -> Path:
     lesson_root = Path(lesson)
     if not lesson_root.exists():

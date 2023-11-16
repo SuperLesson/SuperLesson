@@ -1,5 +1,5 @@
 import logging
-from collections import UserList, namedtuple
+from collections import UserList
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,12 +9,20 @@ from typing import Any, Optional
 from superlesson.steps.step import Step
 
 from .store import Store
-from .utils import format_transcription, timeframe_to_timestamp
+from .utils import format_transcription, seconds_to_timestamp
 
 logger = logging.getLogger("superlesson")
 
 
-TimeFrame = namedtuple("TimeFrame", ["start", "end"])
+@dataclass
+class TimeFrame:
+    start: float
+    end: float
+
+    def __repr__(self) -> str:
+        start = seconds_to_timestamp(self.start)
+        end = seconds_to_timestamp(self.end)
+        return f"{start} - {end}"
 
 
 @dataclass
@@ -43,7 +51,7 @@ class Slide:
             number = "hidden"
         else:
             number = self.number + 1
-        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n\n{format_transcription(self.transcription)}"
+        return f"====== SLIDE {number} ({self.timeframe}) ======\n\n{format_transcription(self.transcription)}"
 
 
 class Slides(UserList):
@@ -79,8 +87,8 @@ class Slides(UserList):
             logger.warning(
                 dedent(
                     f"""Can't merge slide {first} with itself:
-                    First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
-                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}"""
+                    First matched: {self.data[first].timeframe}
+                    Last matched: {self.data[last].timeframe}"""
                 )
             )
             return False
@@ -91,8 +99,8 @@ class Slides(UserList):
             logger.debug(
                 dedent(
                     f"""Merging slides {first} until {last}:
-                    First matched: {timeframe_to_timestamp(self.data[first].timeframe)}
-                    Last matched: {timeframe_to_timestamp(self.data[last].timeframe)}"""
+                    First matched: {self.data[first].timeframe}
+                    Last matched: {self.data[last].timeframe}"""
                 )
             )
 
