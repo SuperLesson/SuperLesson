@@ -1,7 +1,7 @@
-from enum import Enum, unique
 import json as json_lib
 import logging
 import re
+from enum import Enum, unique
 from pathlib import Path
 from typing import Any, Optional
 
@@ -62,7 +62,7 @@ class Store:
         logger.info(f"Loading {txt_path}")
         transcriptions = self._parse_txt(txt_path)
 
-        if transcriptions and len(transcriptions) == len(data):
+        if len(transcriptions) == len(data):
             for i in range(len(data)):
                 data[i]["transcription"] = transcriptions[i]
         else:

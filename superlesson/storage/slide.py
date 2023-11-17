@@ -1,9 +1,9 @@
 import logging
-from collections.abc import Sequence
 from collections import UserList, namedtuple
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent, fill
+from textwrap import dedent
 from typing import Any, Optional
 
 from superlesson.steps.step import Step
@@ -43,7 +43,7 @@ class Slide:
             number = "hidden"
         else:
             number = self.number + 1
-        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n{format_transcription(self.transcription)}"
+        return f"====== SLIDE {number} ({timeframe_to_timestamp(self.timeframe)}) ======\n\n{format_transcription(self.transcription)}"
 
 
 class Slides(UserList):
@@ -168,6 +168,17 @@ class Slides(UserList):
             return steps[last:first:-1]
 
     def load_from_dependencies(self, step: Step, depends_on: Step) -> Optional[Step]:
+        """Load data from previous steps
+
+        Look for valid data from previous steps, from the current until depends_on.
+
+        Args:
+            step (Step): The current step
+            depends_on (Optional[Step], optional): The step to stop loading at. Defaults to None
+
+        Returns:
+            Optional[Step]: The step that was loaded
+        """
         for s in self.valid_dependencies(step, depends_on):
             logging.debug(f"Trying to load {s.value.filename}")
             if s.value.in_storage():
@@ -178,6 +189,26 @@ class Slides(UserList):
                     return s
 
     def load(self, step: Step, depends_on: Optional[Step] = None) -> Optional[Step]:
+        """Load data
+
+        Checks for data from the current step, if found, it prompts the user if they want to run
+        run again or skip.
+
+        Note that running again will discard previous data, including that from subsequent steps
+        that run.
+
+        If data from the current step is not found, it tries to load from previous steps.
+
+        Args:
+            step (Step): The step to load
+            depends_on (Optional[Step], optional): The step to stop loading at. Defaults to None.
+
+        Returns:
+            Optional[Step]: The step that was loaded
+
+        Raises:
+            Exception: If the step depends on another step that has not been run yet.
+        """
         if step.value.in_storage() and self.load_step(step):
             if (
                 input(
@@ -197,6 +228,7 @@ class Slides(UserList):
         if loaded is not None:
             return loaded
 
+        # TODO: use a custom exception
         raise Exception(
             f'Step "{step.value.name}" depends on "{depends_on.value.name}", but "{depends_on.value.name}" has not been run yet.'
         )
@@ -214,9 +246,9 @@ class Slides(UserList):
             self._store.save_json(
                 meta.filename, [slide.to_dict() for slide in self.data]
             )
-            if meta is Step.transcribe:
+            if step is Step.transcribe:
                 return
-            if self._always_export_txt or meta is Step.improve:
+            if self._always_export_txt or step is Step.improve:
                 self._store.save_txt(
                     meta.filename,
                     "\n".join([str(slide) + "\n" for slide in self.data]),

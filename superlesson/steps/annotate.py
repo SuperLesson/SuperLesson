@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import logging
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
