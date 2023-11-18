@@ -41,20 +41,20 @@ def main():
         run_docker()
     else:
         transcribe.single_file(args.model_size, args.transcribe_locally)
-    input("Press Enter to continue...")
+    input("Press Enter to merge segments.")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError("Transcribing from audio is not implemented yet")
     transitions = Transitions(slides, lesson_files.transcription_source)
     transitions.merge_segments(args.use_silences)
-    input("Press Enter to continue...")
+    input("Press Enter to enumerate slides.")
     annotate = Annotate(slides, lesson_files.presentation)
     annotate.enumerate_slides_from_tframes()
-    input("Press Enter to continue...")
+    input("Press Enter to replace words.")
     transcribe.replace_words()
-    input("Press Enter to continue...")
+    input("Press Enter to improve punctuation.")
     transcribe.improve_punctuation()
-    input("Press Enter to continue...")
+    input("Press Enter to annotate.")
     if lesson_files.presentation.file_type == FileType.video:
         raise NotImplementedError("Annotating from video is not implemented yet")
     annotate.to_pdf()
