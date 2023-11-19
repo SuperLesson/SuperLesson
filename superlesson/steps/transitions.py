@@ -74,22 +74,16 @@ class Transitions:
 
     @staticmethod
     def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:
-        png_paths = []
-        for file in tframes_dir.iterdir():
-            if file.suffix == ".png":
-                png_paths.append(file)
-
         def to_timedelta(h, m, s):
             return datetime.timedelta(hours=int(h), minutes=int(m), seconds=int(s))
 
         tframes = []
-        for path in png_paths:
-            name = path.name
+        for file in tframes_dir.iterdir():
             # we have png files in the format XXXXXX.mp4_HH-MM-SS.png
-            match = re.search(r"_(\d{2}-\d{2}-\d{2})\.png", name)
+            match = re.search(r"_(\d{2}-\d{2}-\d{2})\.png", file.name)
             assert match is not None
             timestamp = to_timedelta(*match.group(1).split("-")).total_seconds()
-            tframes.append(TransitionFrame(timestamp, path))
+            tframes.append(TransitionFrame(timestamp, file))
 
         tframes.sort(key=lambda x: x.timestamp)
 
