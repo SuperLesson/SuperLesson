@@ -79,8 +79,7 @@ class Transitions:
 
         tframes = []
         for file in tframes_dir.iterdir():
-            # we have image files in the format XXXXXX_HH-MM-SS.YYY
-            match = re.search(r"_(\d{2}-\d{2}-\d{2})\.\w+", file.name)
+            match = re.search(r"(\d{2}-\d{2}-\d{2})", file.name)
             if match is None:
                 logger.warning("Couldn't parse transition time from %s", file.name)
                 continue
