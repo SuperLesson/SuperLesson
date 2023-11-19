@@ -89,10 +89,12 @@ If you think some step is misbehaving, or would simply like to see what is happe
 the `--diff` flag followed by the two steps you want to compare, e.g.:
 
 ```
-poetry run superlesson --diff merge improve
+poetry run superlesson LESSON --diff merge improve
 ```
 
 Note that only steps that generate some text output may be used.
+
+For this step you should install [wdiff](https://www.gnu.org/software/wdiff/). 
 
 ## Development
 
