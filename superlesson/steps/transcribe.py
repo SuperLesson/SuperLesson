@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import subprocess
 import time
 from dataclasses import dataclass
@@ -284,15 +285,21 @@ class Transcribe:
             )
             return
 
+        pattern = re.compile(r'\s*([^"]*[^"\s])')
+
         lines = replacements_path.read_text().split("\n")
         for line in lines:
             if line.strip() == "":
-                logger.debug("Skipping empty line")
                 continue
-            word, rep = [term.strip().strip('"').strip() for term in line.split("->")]
+            words = line.split("->")
+            if len(words) != 2:
+                logger.warning(f"Invalid line: {line}")
+                continue
+            word = pattern.search(words[0]).group(1)
+            rep = pattern.search(words[1]).group(1)
             logger.debug("Replacing %s with %s", word, rep)
             for slide in self.slides:
-                slide.transcription = slide.transcription.replace(word, rep)
+                slide.transcription = re.sub(r'\b%s\b' % re.escape(word), rep, slide.transcription, flags=re.IGNORECASE)
 
     @staticmethod
     def _diff_gpt(before: str, after: str):
