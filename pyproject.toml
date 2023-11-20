@@ -41,7 +41,7 @@ tiktoken = "^0.5.1"
 
 [tool.poetry.group.annotate.dependencies]
 pypdf = { extras = ["crypto"], version = "^3.17" }
-typst = "^0.8.0"
+typst = "^0.9.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
