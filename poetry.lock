@@ -1276,19 +1276,20 @@ files = [
 
 [[package]]
 name = "replicate"
-version = "0.15.8"
+version = "0.20.0"
 description = "Python client for Replicate"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "replicate-0.15.8-py3-none-any.whl", hash = "sha256:a5a42e1b2f8a091325ebb7fb14f2c000e79bf818ef1d085730a8247fe28a9067"},
-    {file = "replicate-0.15.8.tar.gz", hash = "sha256:a6ca2be3ed5cfe6c3e24602caa61210279b821a5f91ccf818e4c5165ab8db51a"},
+    {file = "replicate-0.20.0-py3-none-any.whl", hash = "sha256:5c17f81378d79bba2f17a23542197951f285bddc00eb238949a1a2ca03345734"},
+    {file = "replicate-0.20.0.tar.gz", hash = "sha256:3c9c0394df6e824c4eb9fee1eb7606d4877b147a65f9ba6b298727438d6626bb"},
 ]
 
 [package.dependencies]
 httpx = ">=0.21.0,<1"
 packaging = "*"
 pydantic = ">1"
+typing-extensions = ">=4.5.0"
 
 [package.extras]
 dev = ["mypy", "pylint", "pytest", "pytest-asyncio", "pytest-recording", "respx", "ruff (>=0.1.3)"]
@@ -1575,4 +1576,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "b018dcbf2766739c8263e458d90b7238c54e93bf23f9e5333666f03ca18cf355"
+content-hash = "b07eec5ee6973e42485f6e6ec3c9044db28e7e0a3a5e0d524e4eb982a7cb9448"
