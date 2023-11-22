@@ -154,6 +154,8 @@ class Annotate:
             logger.warning(f"File {path} doesn't exist")
             return 1
 
+        logger.debug(f"Opening {path}")
+
         ret_code = subprocess.call(["kitty", "+kitten", "icat", str(path)])
         if ret_code != 0:
             logger.warning(f"Error opening {path}")
