@@ -299,7 +299,12 @@ class Transcribe:
             rep = pattern.search(words[1]).group(1)
             logger.debug("Replacing %s with %s", word, rep)
             for slide in self.slides:
-                slide.transcription = re.sub(r'\b%s\b' % re.escape(word), rep, slide.transcription, flags=re.IGNORECASE)
+                slide.transcription = re.sub(
+                    r"\b%s\b" % re.escape(word),
+                    rep,
+                    slide.transcription,
+                    flags=re.IGNORECASE,
+                )
 
     @staticmethod
     def _diff_gpt(before: str, after: str):
@@ -320,10 +325,13 @@ class Transcribe:
 
     @step(Step.improve, Step.merge)
     def improve_punctuation(self):
-        context = """The following is a transcription of a lecture.
-        The transcription is complete, but it has formatting and punctuation mistakes.
-        Fix ONLY the formatting and punctuation mistakes. Do not change the content.
-        The output must be only the transcription, without any other text.
+        context = """O texto a seguir precisa ser preparado para impressão.
+        - formate o texto, sem fazer modificações de conteúdo.
+        - corrija qualquer erro de digitação ou de grafia.
+        - faça as quebras de paragrafação que forem necessárias.
+        - coloque as pontuações adequadas.
+        - a saída deve ser somente a resposta, sem frases como "aqui está o texto revisado e formatado".
+        - NÃO FAÇA NENHUMA MODIFICAÇÃO DE CONTEÚDO, SOMENTE DE FORMATAÇÃO.
         """
 
         margin = 20  # to avoid errors
