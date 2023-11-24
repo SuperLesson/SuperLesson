@@ -39,8 +39,8 @@ def seconds_to_timestamp(s: float) -> str:
 def find_lesson_root(lesson: str) -> Path:
     lesson_root = Path(lesson)
     if not lesson_root.exists():
-        src_path = Path(__file__).parent
-        lesson_root = src_path / "../../lessons" / lesson
+        src_path = Path(__file__).parent / "../../../"
+        lesson_root = src_path / "lessons" / lesson
         lesson_root = lesson_root.resolve()
 
         if not lesson_root.exists():
