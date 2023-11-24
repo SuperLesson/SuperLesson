@@ -8,22 +8,13 @@ authors = [
     "Isaque Alves",
     "Ricardo Saraiva",
 ]
-packages = [{ include = "superlesson" }]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/SuperLesson/SuperLesson"
 
-[tool.poetry.scripts]
-superlesson = "superlesson.cli:main"
-transcribe = "superlesson.cli:transcribe_step"
-merge = "superlesson.cli:merge_step"
-replace = "superlesson.cli:replace_step"
-improve = "superlesson.cli:improve_step"
-enumerate = "superlesson.cli:enumerate_step"
-annotate = "superlesson.cli:annotate_step"
-
 [tool.poetry.dependencies]
 python = "^3.10"
+click = "^8.1.7"
 
 [tool.poetry.group.transcribe.dependencies]
 faster-whisper = "^0.10.0"
