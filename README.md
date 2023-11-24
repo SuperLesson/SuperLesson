@@ -94,12 +94,12 @@ poetry run superlesson LESSON --diff merge improve
 
 Note that only steps that generate some text output may be used.
 
-For this step you should install [wdiff](https://www.gnu.org/software/wdiff/). 
+For this step you should install [`wdiff`](https://www.gnu.org/software/wdiff/). 
 
 ## Development
 
-First, install `pre-commit`, then run `pre-commit install` to install all the
-necessary hooks.
+This project uses [`ruff`](https://github.com/astral-sh/ruff) for linting.
+You can also use [`pre-commit`](https://github.com/pre-commit/pre-commit) to verify your changes.
 
 To test the project, run
 

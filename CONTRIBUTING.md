@@ -49,7 +49,7 @@ Pull requests should be made to the main branch. The pull request's description 
 
 ## Code style
 
-We adopt flake-8 in this project, which follows the [PEP-8](pep8.org) specification.
+We adopt [`ruff`](https://github.com/astral-sh/ruff) in this project, which follows the [PEP-8](pep8.org) specification.
 
 ## Do you want to say hello to us?
 

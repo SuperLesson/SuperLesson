@@ -46,7 +46,59 @@ typst = "^0.9.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
 hypothesis = "*"
+ruff = "^0.1.6"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 119
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint]
+select = [
+    "F", # pyflakes
+    # pycodestyle
+    "E", # errors
+    "W", # warnings
+
+    "B", # bugbear
+    "C", # mccabe
+    "S", # flake8-bandit
+
+    "C4",  # flake8-comprehensions
+    "D",   # pydocstyle
+    "EM",  # flake8-errmsg
+    "I",   # isort
+    "PT",  # pytest
+    "Q",   # flake8-quotes
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
+
+    "ASYNC",
+    "DTZ",
+]
+ignore = [
+    "D105", # missing docstring in magic method
+    "E501", # line too long
+    "S101", # use of assert detected
+
+    # see https://github.com/astral-sh/ruff/issues/4045
+    "S602",
+    "S603",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/**/*.py" = [
+    "D", # missing docstring in public module
+]
+
+[tool.ruff.mccabe]
+max-complexity = 8
