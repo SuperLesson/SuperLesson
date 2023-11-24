@@ -153,10 +153,9 @@ class Slides(UserList):
         meta = step.value
         assert meta.filename is not None
         logger.debug(f"Loading data from step {step.value.name}")
-        verbose = step is not Step.transcribe
-        data = self._store.load(meta.filename, verbose)
+        data = self._store.load(meta.filename, load_txt=step > Step.merge)
         if data is not None:
-            self._load_slides(data, verbose)
+            self._load_slides(data, verbose=step is Step.transcribe)
             self._step_in_memory = step
             return True
         return False
