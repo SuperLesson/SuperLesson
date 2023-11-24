@@ -23,7 +23,7 @@ enumerate = "superlesson.cli:enumerate_step"
 annotate = "superlesson.cli:annotate_step"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 
 [tool.poetry.group.transcribe.dependencies]
 faster-whisper = "^0.9.0"
