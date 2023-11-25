@@ -170,20 +170,21 @@ class Transcribe:
         logger.info(f"Extracting audio from {input_path}")
 
         subprocess.run(
-            " ".join(
-                [
-                    "ffmpeg",
-                    "-loglevel",
-                    "quiet",
-                    f"-i {input_path}",
-                    "-vn",
-                    f"-acodec {audio_codec}",
-                    f"-ac {channels}",
-                    f"-ar {sample_rate}",
-                    str(output_path),
-                ]
-            ),
-            shell=True,
+            [
+                "ffmpeg",
+                "-loglevel",
+                "quiet",
+                "-i",
+                input_path,
+                "-vn",
+                "-acodec",
+                str(audio_codec),
+                "-ac",
+                str(channels),
+                "-ar",
+                str(sample_rate),
+                output_path,
+            ],
             check=True,
             stdout=subprocess.DEVNULL,
         )
