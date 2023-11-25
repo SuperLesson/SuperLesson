@@ -29,34 +29,37 @@ class Store:
         return self._lesson_root / f"{filename}.txt"
 
     @staticmethod
-    def _parse_txt(txt_path: Path) -> dict[str, Any]:
-            split_texts = re.split(r"====== SLIDE (\S*) \((.*)\) ======", txt_path.read_text())[1:]
+    def _parse_txt(txt_path: Path) -> list[dict[str, Any]]:
+        split_texts = re.split(
+            r"====== SLIDE (\S*) \((.*)\) ======", txt_path.read_text()
+        )[1:]
 
-            transcriptions = split_texts[2::3]
+        transcriptions = split_texts[2::3]
 
-            timeframes = [
-             {"start": start, "end": end}
-	                for start, end in map(lambda t: t.split(" - "), split_texts[1::3])
-                    ]
+        timeframes = [
+            {"start": start, "end": end}
+            for start, end in map(lambda t: t.split(" - "), split_texts[1::3])
+        ]
 
-            slide_numbers = split_texts[::3]
-            def parse_to_int(value):
-                try:
-                    return int(value)
-                except (ValueError, TypeError):
-                    return None
+        slide_numbers = split_texts[::3]
 
-            transcription_dicts = []
+        def parse_to_int(value):
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
 
-            for i in range(len(transcriptions)):
-                transcription_dict = {
-                    'transcription': format_transcription(transcriptions[i]),
-                    'timeframe': timeframes[i],
-                    'number': parse_to_int(slide_numbers[i])
-                }
-                transcription_dicts.append(transcription_dict)
+        transcription_dicts = []
 
-            return transcription_dicts
+        for i in range(len(transcriptions)):
+            transcription_dict = {
+                "transcription": format_transcription(transcriptions[i]),
+                "timeframe": timeframes[i],
+                "number": parse_to_int(slide_numbers[i]),
+            }
+            transcription_dicts.append(transcription_dict)
+
+        return transcription_dicts
 
     @staticmethod
     def _parse_json(json_path: Path) -> list[dict[str, Any]]:
@@ -70,23 +73,22 @@ class Store:
 
         return data
 
-    @classmethod
-    def load(cls, filename: str, load_txt: bool) -> Optional[list[Any]]:
+    def load(self, filename: str, load_txt: bool) -> Optional[list[Any]]:
         if load_txt:
-            txt_path = cls._get_storage_path(filename, Format.txt)
+            txt_path = self._get_storage_path(filename, Format.txt)
             if txt_path.exists():
                 logger.info(f"Loading {txt_path}")
-                return cls._parse_txt(txt_path)
+                return self._parse_txt(txt_path)
 
             else:
                 logger.info(
                     f"Couldn't load from file {txt_path}, make sure it's properly formatted"
                 )
 
-        json_path = cls._get_storage_path(filename, Format.json)
+        json_path = self._get_storage_path(filename, Format.json)
         if json_path.exists():
             logger.info(f"Loading {json_path}")
-            return cls._parse_json(json_path)
+            return self._parse_json(json_path)
 
         return None
 
