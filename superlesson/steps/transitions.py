@@ -142,16 +142,28 @@ class Transitions:
 
         return improved
 
-    def _find_silence_references(self):
-        references = []
+    def _find_silence_references(self) -> list[TimeFrame]:
+        import pydub
+
         audio_path = self._transcription_source.extract_audio()
+        audio = pydub.AudioSegment.from_wav(audio_path)
+        logger.debug("Audio duration: %s", seconds_to_timestamp(audio.duration_seconds))
+
+        silences = []
         for threshold_offset in range(-6, -10, -2):
-            references = self._detect_silence(audio_path, threshold_offset)
-            if len(references) > 0:
-                logger.debug("Found silences: %s", references)
+            silence_thresh = audio.dBFS + threshold_offset
+            logger.info("Looking for silences using threshold %s", silence_thresh)
+            silences = pydub.silence.detect_silence(
+                audio,
+                min_silence_len=800,
+                silence_thresh=silence_thresh,
+                seek_step=1,
+            )
+            if len(silences) > 0:
+                logger.debug("Found silences: %s", silences)
                 break
             logger.debug("Found no silences with threshold offset %s", threshold_offset)
-        return references
+        return [TimeFrame((start / 1000), (end / 1000)) for start, end in silences]
 
     def _get_period_end_times(self) -> list[TimeFrame]:
         punctuation = [".", "?", "!"]
@@ -166,20 +178,3 @@ class Transitions:
             period_end_times,
         )
         return period_end_times
-
-    @staticmethod
-    def _detect_silence(audio_file: Path, threshold_offset: int) -> list[TimeFrame]:
-        import pydub
-
-        audio = pydub.AudioSegment.from_wav(audio_file)
-        logger.debug("Audio duration: %s", seconds_to_timestamp(audio.duration_seconds))
-
-        silence_thresh = audio.dBFS + threshold_offset
-        logger.info("Looking for silences using threshold %s", silence_thresh)
-        silences = pydub.silence.detect_silence(
-            audio,
-            min_silence_len=800,
-            silence_thresh=silence_thresh,
-            seek_step=1,
-        )
-        return [TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences]
