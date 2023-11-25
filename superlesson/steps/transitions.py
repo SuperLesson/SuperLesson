@@ -26,11 +26,16 @@ class Transitions:
 
     @step(Step.merge, Step.transcribe)
     def merge_segments(self, using_silences: bool):
-        # TODO: use audio as source for transcription
-        video_path = self._transcription_source.full_path
-        audio_path = video_path.with_suffix(".wav")
+        tframes_path = self._transcription_source.path / "tframes"
+        try:
+            tframes = self._get_transition_frames(tframes_path)
+        except FileNotFoundError as e:
+            msg = f"Couldn't find transition frames at {tframes_path}"
+            raise Exception(msg) from e
 
         if using_silences:
+            video_path = self._transcription_source.full_path
+            audio_path = video_path.with_suffix(".wav")
             if not audio_path.exists():
                 raise Exception("Please run transcribe before inserting tmarks")
             references = []
@@ -44,10 +49,6 @@ class Transitions:
                 )
         else:
             references = self._get_period_end_times()
-
-        tframes = self._get_transition_frames(
-            self._transcription_source.path / "tframes"
-        )
 
         timestamps = [frame.timestamp for frame in tframes]
 
