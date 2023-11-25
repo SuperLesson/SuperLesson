@@ -73,5 +73,4 @@ def diff_words(before: Path, after: Path):
             ],
         ),
         shell=True,
-        check=True,
     )
