@@ -1,8 +1,9 @@
 import logging
+import re
+import subprocess
 from datetime import timedelta
 from pathlib import Path
 from textwrap import fill
-import re
 
 logger = logging.getLogger("superlesson")
 
@@ -47,3 +48,30 @@ def find_lesson_root(lesson: str) -> Path:
 
     logger.debug(f"Found lesson root: {lesson_root}")
     return lesson_root
+
+
+def diff_words(before: Path, after: Path):
+    start_red = r"$'\033[30;41m'"
+    start_green = r"$'\033[30;42m'"
+    reset = r"$'\033[0m'"
+
+    subprocess.run(
+        " ".join(
+            [
+                "wdiff",
+                "-n",
+                "-w",
+                start_red,
+                "-x",
+                reset,
+                "-y",
+                start_green,
+                "-z",
+                reset,
+                str(before),
+                str(after),
+            ],
+        ),
+        shell=True,
+        check=True,
+    )

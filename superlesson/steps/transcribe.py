@@ -13,6 +13,7 @@ from typing import Optional, cast
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
 from superlesson.storage.store import Store
+from superlesson.storage.utils import diff_words
 
 from .step import Step, step
 
@@ -312,17 +313,7 @@ class Transcribe:
         file1 = Store.temp_save(before)
         file2 = Store.temp_save(after)
 
-        subprocess.run(
-            " ".join(
-                [
-                    "wdiff",
-                    "-n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m'",
-                    str(file1),
-                    str(file2),
-                ]
-            ),
-            shell=True,
-        )
+        diff_words(file1, file2)
 
     @step(Step.improve, Step.merge)
     def improve_punctuation(self):

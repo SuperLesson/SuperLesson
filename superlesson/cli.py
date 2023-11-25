@@ -9,7 +9,7 @@ from .steps import Annotate, Transcribe, Transitions
 from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
-from .storage.utils import find_lesson_root
+from .storage.utils import find_lesson_root, diff_words
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -191,18 +191,7 @@ def check_differences(lesson: str, prev: Step, next: Step):
     next_file = next_slides.save_temp_txt()
 
     logger.debug("Running wdiff")
-
-    subprocess.run(
-        " ".join(
-            [
-                "wdiff",
-                "-n -w $'\033[30;41m' -x $'\033[0m' -y $'\033[30;42m' -z $'\033[0m'",
-                str(prev_file),
-                str(next_file),
-            ]
-        ),
-        shell=True,
-    )
+    diff_words(prev_file, next_file)
 
 
 def merge_step():
