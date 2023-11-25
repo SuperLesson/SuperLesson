@@ -3,7 +3,6 @@ import tempfile
 from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
-from typing import NamedTuple, Union
 
 from superlesson.storage import LessonFile, Slides
 
@@ -13,7 +12,7 @@ logger = logging.getLogger("superlesson")
 
 
 class InvalidInputError(Exception):
-    """Raised when the user inputs an invalid value"""
+    """Raised when the user inputs an invalid value."""
 
 
 @dataclass
@@ -29,7 +28,10 @@ class Command(Enum):
     number = "number"
 
 
-Answer = NamedTuple("Answer", [("command", Command), ("value", Union[int, None])])
+@dataclass
+class Answer:
+    command: Command
+    value: int | None
 
 
 class Annotate:
