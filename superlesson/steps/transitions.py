@@ -34,11 +34,8 @@ class Transitions:
             raise Exception(msg) from e
 
         if using_silences:
-            video_path = self._transcription_source.full_path
-            audio_path = video_path.with_suffix(".wav")
-            if not audio_path.exists():
-                raise Exception("Please run transcribe before inserting tmarks")
             references = []
+            audio_path = self._transcription_source.extract_audio()
             for threshold_offset in range(-6, -10, -2):
                 references = self._detect_silence(audio_path, threshold_offset)
                 if len(references) > 0:

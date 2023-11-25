@@ -48,11 +48,9 @@ class Transcribe:
 
     @step(Step.transcribe)
     def single_file(self, model_size: str, local: bool):
-        video_path = self._transcription_source.full_path
-        audio_path = video_path.with_suffix(".wav")
-        self._extract_audio(video_path, audio_path)
-
         bench_start = datetime.now()
+
+        audio_path = self._transcription_source.extract_audio(overwrite=True)
 
         if not local and os.getenv("REPLICATE_API_TOKEN"):
             s3_url = self._upload_file_to_s3(audio_path)
@@ -68,7 +66,8 @@ class Transcribe:
                 )
                 != "y"
             ):
-                raise Exception("Couldn't run transcription.")
+                msg = "Couldn't run transcription."
+                raise Exception(msg)
             segments = self._local_transcription(audio_path, model_size)
 
         for segment in segments:
@@ -158,38 +157,6 @@ class Transcribe:
         )
 
         return cls._run_with_pbar(segments, info)
-
-    @staticmethod
-    def _extract_audio(
-        input_path: Path,
-        output_path: Path,
-        audio_codec: str = "pcm_s16le",
-        channels: int = 1,
-        sample_rate: int = 16000,
-    ):
-        logger.info(f"Extracting audio from {input_path}")
-
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-loglevel",
-                "quiet",
-                "-i",
-                input_path,
-                "-vn",
-                "-acodec",
-                str(audio_codec),
-                "-ac",
-                str(channels),
-                "-ar",
-                str(sample_rate),
-                output_path,
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-
-        logger.info(f"Audio saved as {output_path}")
 
     @staticmethod
     def _has_nvidia_gpu():
