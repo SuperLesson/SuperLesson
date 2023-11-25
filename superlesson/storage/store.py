@@ -3,6 +3,7 @@ import logging
 import re
 from enum import Enum, unique
 from pathlib import Path
+from datetime import time
 from typing import Any, Optional
 
 from .utils import format_transcription
@@ -36,8 +37,17 @@ class Store:
 
         transcriptions = split_texts[2::3]
 
+        def timestamp_to_seconds(timestamp: str) -> float:
+            if len(timestamp.split(":")[0]) == 1:
+                timestamp = "0" + timestamp
+            t = time.fromisoformat(timestamp)
+            return (t.hour * 60 + t.minute) * 60 + t.second + t.microsecond / 1e6
+
         timeframes = [
-            {"start": start, "end": end}
+            {
+                "start": timestamp_to_seconds(start),
+                "end": timestamp_to_seconds(end),
+            }
             for start, end in map(lambda t: t.split(" - "), split_texts[1::3])
         ]
 
