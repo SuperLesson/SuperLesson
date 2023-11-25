@@ -48,7 +48,7 @@ class Transcribe:
 
     @step(Step.transcribe)
     def single_file(self, model_size: str, local: bool):
-        bench_start = datetime.now()
+        bench_start = time.time()
 
         audio_path = self._transcription_source.extract_audio(overwrite=True)
 
@@ -75,7 +75,7 @@ class Transcribe:
                 Slide(segment.text, TimeFrame(segment.start, segment.end))
             )
 
-        bench_duration = datetime.now() - bench_start
+        bench_duration = time.time() - bench_start
         logger.info(f"Transcription took {bench_duration} to finish")
 
     @classmethod
@@ -302,11 +302,11 @@ class Transcribe:
             max_input_tokens,
         )
 
-        bench_start = datetime.now()
+        bench_start = time.time()
 
         completions = asyncio.run(self._complete_with_chatgpt(prompts, context))
 
-        bench_duration = datetime.now() - bench_start
+        bench_duration = time.time() - bench_start
         logger.info(f"ChatGPT requests took {bench_duration} to finish")
 
         last_slide = 0
