@@ -23,6 +23,7 @@ class Page:
 
 @unique
 class Command(Enum):
+    append = "a"
     none = "n"
     back = "b"
     number = "number"
@@ -73,14 +74,18 @@ class Annotate:
                     )
                 else:
                     print(
-                        f"Type the number of the current slide (1 to {self.presentation_len}), (n)ext to skip it, or (b)ack to redo the last slide"
+                        f"Type the number of the current slide (1 to {self.presentation_len}), (n)ext to skip it, (b)ack to redo the last slide, or (a)ppend to merge the current slide with the previous one"
                     )
                 raise InvalidInputError from cmd_err
 
-            match cmd:
-                case Command.back if slide_idx == 0:
-                    msg = "Can't go back, already at the first slide"
-                    raise InvalidInputError(msg) from int_err
+            if slide_idx == 0:
+                match cmd:
+                    case Command.back:
+                        msg = "Can't go back, already at the first slide"
+                        raise InvalidInputError(msg) from int_err
+                    case Command.append:
+                        msg = "Can't append first slide"
+                        raise InvalidInputError(msg) from int_err
 
             return Answer(cmd, None)
 
@@ -115,6 +120,10 @@ class Annotate:
                     # keep the default value for the next slide
                     self.slides[i].number = -1
                     i += 1
+                case Command.append:
+                    logger.info(f"Appending slide {i + 1} to previous slide")
+                    # keep the default value for the next slide
+                    self.slides.merge(i - 1, i)
                 case Command.back:
                     logger.info("Going back to previous slide")
                     # suggest the last slide default again
