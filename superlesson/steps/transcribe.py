@@ -5,7 +5,6 @@ import re
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Optional, cast
@@ -292,8 +291,10 @@ class Transcribe:
         - NÃO FAÇA NENHUMA MODIFICAÇÃO DE CONTEÚDO, SOMENTE DE FORMATAÇÃO.
         """
 
-        margin = 20  # to avoid errors
-        max_input_tokens = (2**14 - self._count_tokens(context)) // 2 - margin
+        # margin = 20  # to avoid errors
+        # GPT-3.5-turbo-1106 takes in at most 16k tokens, but it only outputs 4k tokens, so we use
+        # it as the maximum and ignore margin and context size for now
+        max_input_tokens = 2**12  # - self._count_tokens(context)) // 2 - margin
         logger.debug(f"Max input tokens: {max_input_tokens}")
 
         logger.debug("Splitting into prompts")
@@ -311,7 +312,7 @@ class Transcribe:
 
         last_slide = 0
         improved_transcription = []
-        for prompt, completion in zip(prompts, completions):
+        for prompt, completion in zip(prompts, completions, strict=True):
             text = prompt.body
             similarity_ratio = self._calculate_difference(text, completion)
             # different = 0 < similarity_ratio < 1 = same
@@ -449,6 +450,7 @@ class Transcribe:
                 n=1,
                 temperature=0.1,
             )
+            logger.debug("ChatGPT response: %s", completion.choices[0].message.content)
             return completion.choices[0].message.content
         except openai.RateLimitError:
             return None
