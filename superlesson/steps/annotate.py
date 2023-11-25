@@ -37,116 +37,99 @@ class Answer:
 class Annotate:
     def __init__(self, slides: Slides, presentation: LessonFile):
         self._presentation = presentation
+
+        from pypdf import PdfReader
+
+        self.presentation_len = len(PdfReader(self._presentation.full_path).pages)
+
         self.slides = slides
+
+    def _get_slide_number_from_user(self, slide_idx: int, default: int) -> Answer:
+        if (path := self.slides[slide_idx].tframe) is not None:
+            self._sys_open(path)
+            user_input = input(
+                f"What is the number of this slide? (default: {default + 1}) "
+            )
+        # TODO: (#111) Remove this once we capture tframes for all slides
+        else:
+            user_input = input(
+                f"What is the number of the last slide? (default: {default + 1}) "
+            )
+
+        user_input = user_input.strip().lower()
+
+        if user_input == "":
+            return Answer(Command.number, default)
+
+        try:
+            number = int(user_input) - 1
+        except ValueError as int_err:
+            try:
+                cmd = Command(user_input[0])
+            except ValueError as cmd_err:
+                if slide_idx == 0:
+                    print(
+                        f"Type the number of the current slide (1 to {self.presentation_len}) or (n)ext to skip it"
+                    )
+                else:
+                    print(
+                        f"Type the number of the current slide (1 to {self.presentation_len}), (n)ext to skip it, or (b)ack to redo the last slide"
+                    )
+                raise InvalidInputError from cmd_err
+
+            match cmd:
+                case Command.back if slide_idx == 0:
+                    msg = "Can't go back, already at the first slide"
+                    raise InvalidInputError(msg) from int_err
+
+            return Answer(cmd, None)
+
+        if -1 < number < self.presentation_len:
+            return Answer(Command.number, number)
+
+        msg = f"Invalid slide number: {number + 1} (should be between 1 and {self.presentation_len})"
+        raise InvalidInputError(msg)
 
     @step(Step.enumerate, Step.merge)
     def enumerate_slides_from_tframes(self):
-        from pypdf import PdfReader
-
-        max_slide_number = len(PdfReader(self._presentation.full_path).pages)
-
-        def get_slide_number_from_user(
-            default: int = max_slide_number - 1, is_last: bool = False
-        ) -> Answer:
-            # TODO: (#111) Remove this once we capture tframes for all slides
-            if is_last:
-                user_input = input(
-                    f"What is the number of the last slide? (default: {default + 1}) "
-                ).lower()
-            else:
-                user_input = input(
-                    f"What is the number of this slide? (default: {default + 1}) "
-                ).lower()
-
-            # TODO: (3.10) use match
-            if user_input == "":
-                return Answer(Command.number, default)
-            elif user_input.startswith("n"):
-                return Answer(Command.none, None)
-            elif user_input.startswith("b"):
-                return Answer(Command.back, None)
-
-            try:
-                number = int(user_input) - 1
-            except ValueError as e:
-                if not user_input.startswith("n"):
-                    logger.warning(f"Invalid input: {user_input}")
-
-                if default == 0:
-                    print(
-                        f"Type the number of the current slide (1 to {max_slide_number}) or (n)ext to skip the current slide"
-                    )
-                else:
-                    print(
-                        f"Type the number of the current slide (1 to {max_slide_number}), (n)ext to skip the current slide, or (b)ack to redo the last slide"
-                    )
-                raise InvalidInputError from e
-
-            if number < 0 or number >= max_slide_number:
-                raise InvalidInputError(
-                    f"Invalid slide number: {number + 1} (should be between 1 and {max_slide_number})"
-                )
-
-            return Answer(Command.number, number)
-
         i = 0
         last_answer = -1
         while i < len(self.slides):
-            slide = self.slides[i]
-            path = slide.tframe
-            if path is not None:
-                self._sys_open(path)
-                if last_answer < max_slide_number - 1:
-                    suggestion = last_answer + 1
-                else:
-                    logger.debug("Repeating last suggestion")
-                    suggestion = max_slide_number - 1
-                try:
-                    answer = get_slide_number_from_user(suggestion)
-                except InvalidInputError as e:
-                    logger.warning(e)
-                    logger.warning("Repeating last slide")
-                    continue
+            if last_answer < self.presentation_len - 1:
+                suggestion = last_answer + 1
             else:
-                assert i == len(self.slides) - 1, f"Slide {i} doesn't have a tframe"
-                try:
-                    answer = get_slide_number_from_user(is_last=True)
-                except InvalidInputError as e:
-                    logger.warning(e)
-                    logger.warning("Repeating last slide")
-                    continue
+                logger.debug("Repeating suggestion")
+                suggestion = last_answer
 
-            # TODO: (3.10) use match
-            if answer.command is Command.none:
-                logger.info("Slide will be hidden")
-                # keep the default value for the next slide
-                slide.number = -1
-                i += 1
-            elif answer.command is Command.back:
-                logger.info("Going back to previous slide")
-                # suggest the last slide default again
-                if last_answer >= 0:
-                    last_answer -= 1
-                if i > 0:
+            logger.debug(f"Getting slide number for slide {i}")
+            try:
+                answer = self._get_slide_number_from_user(i, suggestion)
+            except (InvalidInputError, ValueError) as e:
+                logger.warning(e)
+                logger.warning("Repeating slide")
+                continue
+
+            match answer.command:
+                case Command.none:
+                    logger.info("Slide will be hidden")
+                    # keep the default value for the next slide
+                    self.slides[i].number = -1
+                    i += 1
+                case Command.back:
+                    logger.info("Going back to previous slide")
+                    # suggest the last slide default again
+                    if last_answer >= 0:
+                        last_answer -= 1
                     i -= 1
-                else:
-                    logger.warning("Can't go back, already at the first slide")
-            elif answer.command is Command.number:
-                number = answer.value
-                assert isinstance(number, int)
-                # keep repeating
-                if number >= max_slide_number:
-                    logger.warning(
-                        f"{number + 1} is greater than the number of slides provided ({max_slide_number}), using {max_slide_number}"
-                    )
-                    last_answer = max_slide_number - 1
-                else:
-                    if number == max_slide_number - 1:
+                case Command.number:
+                    number = answer.value
+                    assert isinstance(number, int)
+                    if number == self.presentation_len - 1:
                         logger.info("Reached last slide on presentation")
                     last_answer = number
-                logger.debug("slide number: %d", last_answer)
-                slide.number = last_answer
-                i += 1
+                    logger.debug("slide number: %d", last_answer)
+                    self.slides[i].number = last_answer
+                    i += 1
 
     @staticmethod
     def _sys_open(path: Path) -> int:
