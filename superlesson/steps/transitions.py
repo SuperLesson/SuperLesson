@@ -33,39 +33,24 @@ class Transitions:
             msg = f"Couldn't find transition frames at {tframes_path}"
             raise Exception(msg) from e
 
-        if using_silences:
-            references = []
-            audio_path = self._transcription_source.extract_audio()
-            for threshold_offset in range(-6, -10, -2):
-                references = self._detect_silence(audio_path, threshold_offset)
-                if len(references) > 0:
-                    logger.debug("Found silences: %s", references)
-                    break
-                logger.debug(
-                    "Found no silences with threshold offset %s", threshold_offset
-                )
+        if tframes:
+            improved = self._improve_transitions(
+                [frame.timestamp for frame in tframes], using_silences
+            )
+
+            slide_i = 0
+            tframe_i = 0
+            for time in improved:
+                if self.slides.merge(time):
+                    self.slides[slide_i].tframe = tframes[tframe_i].path
+                    slide_i += 1
+                else:
+                    logger.warning(
+                        f"No slide found for transition {seconds_to_timestamp(time)}"
+                    )
+                tframe_i += 1
         else:
-            references = self._get_period_end_times()
-
-        timestamps = [frame.timestamp for frame in tframes]
-
-        if len(references) != 0:
-            improved = self._improve_tts_with_references(timestamps, references, 2.0)
-        else:
-            logger.warning("No references found, skipping improvement")
-            improved = timestamps
-
-        slide_i = 0
-        tframe_i = 0
-        for time in improved:
-            if self.slides.merge(time):
-                self.slides[slide_i].tframe = tframes[tframe_i].path
-                slide_i += 1
-            else:
-                logger.warning(
-                    f"No slide found for transition {seconds_to_timestamp(time)}"
-                )
-            tframe_i += 1
+            logger.warning("No transition frames found, merging all slides")
 
         # use this to merge the last slides
         self.slides.merge()
@@ -93,6 +78,32 @@ class Transitions:
 
         return tframes
 
+    def _improve_transitions(
+        self, timestamps: list[float], using_silences: bool
+    ) -> list[float]:
+        references = (
+            self._find_silence_references()
+            if using_silences
+            else self._get_period_end_times()
+        )
+
+        if not references:
+            logger.warning("No references found, skipping improvement")
+            return timestamps
+
+        return self._improve_tts_with_references(timestamps, references, 2.0)
+
+    def _find_silence_references(self):
+        references = []
+        audio_path = self._transcription_source.extract_audio()
+        for threshold_offset in range(-6, -10, -2):
+            references = self._detect_silence(audio_path, threshold_offset)
+            if len(references) > 0:
+                logger.debug("Found silences: %s", references)
+                break
+            logger.debug("Found no silences with threshold offset %s", threshold_offset)
+        return references
+
     def _get_period_end_times(self) -> list[TimeFrame]:
         punctuation = [".", "?", "!"]
 
@@ -107,15 +118,8 @@ class Transitions:
         )
         return period_end_times
 
-    # DETECT SILENCE (by far, the slowest step, t= 80 seconds for each hour, rough average)
-    # possible alternative: silero-vad, which is already in use by whisper
-
-    # look for differente ways to find silence_thresh programatically.
-    # with the code bellow I have to make guesses of threshold_factor
     @staticmethod
     def _detect_silence(audio_file: Path, threshold_offset: int) -> list[TimeFrame]:
-        logger.info("Detecting silence")
-
         import pydub
 
         audio = pydub.AudioSegment.from_wav(audio_file)
@@ -123,17 +127,13 @@ class Transitions:
 
         silence_thresh = audio.dBFS + threshold_offset
         logger.info("Looking for silences using threshold %s", silence_thresh)
-
         silences = pydub.silence.detect_silence(
             audio,
             min_silence_len=800,
             silence_thresh=silence_thresh,
             seek_step=1,
         )
-        silences = [
-            TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences
-        ]  # convert to seconds
-        return silences
+        return [TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences]
 
     @classmethod
     def _improve_tts_with_references(
