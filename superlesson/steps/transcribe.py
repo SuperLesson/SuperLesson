@@ -50,8 +50,7 @@ class Transcribe:
     def single_file(self, model_size: str, local: bool):
         video_path = self._transcription_source.full_path
         audio_path = video_path.with_suffix(".wav")
-        if not audio_path.exists():
-            self._extract_audio(video_path, audio_path)
+        self._extract_audio(video_path, audio_path)
 
         bench_start = datetime.now()
 
