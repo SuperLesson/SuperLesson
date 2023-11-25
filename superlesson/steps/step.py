@@ -25,9 +25,9 @@ class StepMetadata:
 class Step(Enum):
     transcribe = StepMetadata(name="transcribe", filename="transcription")
     merge = StepMetadata(name="merge segments", filename="merged")
-    enumerate = StepMetadata(name="enumerate slides", filename="enumerated")
     replace = StepMetadata(name="replace words", filename="replaced")
     improve = StepMetadata(name="improve punctuation", filename="improved")
+    enumerate = StepMetadata(name="enumerate slides", filename="enumerated")
     manual = StepMetadata(name="manual revision", filename="manual")
     # TODO: annotated pdf should be managed by storage layer
     annotate = StepMetadata(name="annotate")
