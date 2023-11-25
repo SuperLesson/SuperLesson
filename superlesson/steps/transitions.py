@@ -79,7 +79,7 @@ class Transitions:
         return tframes
 
     def _improve_transitions(
-        self, timestamps: list[float], using_silences: bool
+        self, timestamps: list[float], using_silences: bool, threshold: float = 3.0
     ) -> list[float]:
         references = (
             self._find_silence_references()
@@ -91,7 +91,39 @@ class Transitions:
             logger.warning("No references found, skipping improvement")
             return timestamps
 
-        return self._improve_tts_with_references(timestamps, references, 2.0)
+        logger.info("Improving transition times")
+
+        improved = timestamps.copy()
+
+        def log(before, after):
+            diff = after - before
+            sign = "+" if diff > 0 else "-"
+            logger.info(
+                "Replaced transition time %s with %s (%s)",
+                seconds_to_timestamp(before),
+                seconds_to_timestamp(after),
+                f"{sign}{abs(diff):.3f}",
+            )
+
+        si = 0
+        for ti, time in enumerate(timestamps):
+            while si < len(references) and references[si].end < time:
+                si += 1
+            if si < len(references):
+                ref = references[si]
+                if ref.start <= time <= ref.end:
+                    # long silences shouldn't be a problem
+                    improved[ti] = ref.end
+                    log(time, ref.end)
+                elif time < ref.start and abs(timestamps[ti] - ref.start) < threshold:
+                    improved[ti] = ref.start
+                    log(time, ref.start)
+
+        if improved != timestamps:
+            logger.info("Improved transition times")
+            logger.debug("%s", [seconds_to_timestamp(time) for time in improved])
+
+        return improved
 
     def _find_silence_references(self):
         references = []
@@ -134,41 +166,3 @@ class Transitions:
             seek_step=1,
         )
         return [TimeFrame((start / 1000), (stop / 1000)) for start, stop in silences]
-
-    @classmethod
-    def _improve_tts_with_references(
-        cls, timestamps: list[float], references: list[TimeFrame], threshold: float
-    ) -> list[float]:
-        logger.info("Improving transition times")
-
-        improved = timestamps.copy()
-
-        def log(before, after):
-            diff = after - before
-            sign = "+" if diff > 0 else "-"
-            logger.info(
-                "Replaced transition time %s with %s (%s)",
-                seconds_to_timestamp(before),
-                seconds_to_timestamp(after),
-                f"{sign}{abs(diff):.3f}",
-            )
-
-        si = 0
-        for ti, time in enumerate(timestamps):
-            while si < len(references) and references[si].end < time:
-                si += 1
-            if si < len(references):
-                ref = references[si]
-                if ref.start <= time <= ref.end:
-                    # long silences shouldn't be a problem
-                    improved[ti] = ref.end
-                    log(time, ref.end)
-                elif time < ref.start and abs(timestamps[ti] - ref.start) < threshold:
-                    improved[ti] = ref.start
-                    log(time, ref.start)
-
-        if improved != timestamps:
-            logger.info("Improved transition times")
-            logger.debug("%s", [seconds_to_timestamp(time) for time in improved])
-
-        return improved
