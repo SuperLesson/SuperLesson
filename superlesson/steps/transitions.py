@@ -143,50 +143,32 @@ class Transitions:
 
         improved = timestamps.copy()
 
-        def format_diff(start, end):
-            diff = end - start
+        def log(before, after):
+            diff = after - before
             sign = "+" if diff > 0 else "-"
-            return f"{sign}{abs(diff):.3f}"
+            logger.info(
+                "Replaced transition time %s with %s (%s)",
+                seconds_to_timestamp(before),
+                seconds_to_timestamp(after),
+                f"{sign}{abs(diff):.3f}",
+            )
 
         si = 0
-        ti = 0
-        while ti < len(timestamps) and si < len(references):
-            ref = references[si]
-            time = timestamps[ti]
-            if ref.start < time < ref.end:
-                # long silences shouldn't be a problem
-                improved[ti] = ref.end
-                ti += 1
-            elif ref.end < time:
-                # teacher speaks before the slide changes
-                if time - ref.end < threshold:
-                    improved[ti] = ref.end
-                    logger.info(
-                        "Replaced transition time %s with %s (%s)",
-                        seconds_to_timestamp(time),
-                        seconds_to_timestamp(ref.end),
-                        format_diff(time, ref.end),
-                    )
-                    # there probably isn't another timestamp that fits here
-                    ti += 1
+        for ti, time in enumerate(timestamps):
+            while si < len(references) and references[si].end < time:
                 si += 1
-            elif time < ref.start:
-                # teacher silent after the slide changes
-                if ref.start - time < threshold:
+            if si < len(references):
+                ref = references[si]
+                if ref.start <= time <= ref.end:
+                    # long silences shouldn't be a problem
+                    improved[ti] = ref.end
+                    log(time, ref.end)
+                elif time < ref.start and abs(timestamps[ti] - ref.start) < threshold:
                     improved[ti] = ref.start
-                    logger.info(
-                        "Replaced transition time %s with %s (%s)",
-                        seconds_to_timestamp(time),
-                        seconds_to_timestamp(ref.start),
-                        format_diff(time, ref.start),
-                    )
-                ti += 1
+                    log(time, ref.start)
 
         if improved != timestamps:
             logger.info("Improved transition times")
-            logger.debug(
-                "%s",
-                [seconds_to_timestamp(time) for time in improved],
-            )
+            logger.debug("%s", [seconds_to_timestamp(time) for time in improved])
 
         return improved
