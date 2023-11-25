@@ -3,6 +3,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame
@@ -38,22 +39,38 @@ class Transitions:
                 [frame.timestamp for frame in tframes], using_silences
             )
 
-            slide_i = 0
-            tframe_i = 0
-            for time in improved:
-                if self.slides.merge(time):
-                    self.slides[slide_i].tframe = tframes[tframe_i].path
-                    slide_i += 1
-                else:
+            start = 0
+            for tframe, time in zip(tframes, improved, strict=True):
+                end = next(
+                    (
+                        i
+                        for i, slide in enumerate(self.slides)
+                        if (end_time := slide.timeframe).end >= time
+                    ),
+                    len(self.slides),
+                )
+
+                logger.debug(
+                    f"Found segment {end + 1} with timeframe {end_time} >= {seconds_to_timestamp(time)}"
+                )
+
+                logger.info(f"Merging {end - start} words into slide {start + 1}")
+                try:
+                    self.slides.merge(start, end)
+                    self.slides[start].tframe = tframe.path
+                    start += 1
+                except ValueError as e:
+                    logger.warning(e)
+
                     logger.warning(
-                        f"No slide found for transition {seconds_to_timestamp(time)}"
+                        f"No transcription available between {self.slides[start].timeframe.start} and {seconds_to_timestamp(time)}"
                     )
-                tframe_i += 1
+                    logger.warning(f"Skipping tframe {tframe.path}")
+
+            self.slides.merge(start, len(self.slides) - 1)
         else:
             logger.warning("No transition frames found, merging all slides")
-
-        # use this to merge the last slides
-        self.slides.merge()
+            self.slides.merge(0, len(self.slides) - 1)
 
     @staticmethod
     def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:

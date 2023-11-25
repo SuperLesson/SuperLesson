@@ -3,8 +3,7 @@ from collections import UserList
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
-from typing import Any, Optional
+from typing import Any
 
 from superlesson.steps.step import Step
 
@@ -29,9 +28,8 @@ class TimeFrame:
 class Slide:
     transcription: str
     timeframe: TimeFrame
-    tframe: Optional[Path] = None
-    number: Optional[int] = None
-    merged: bool = False
+    tframe: Path | None = None
+    number: int | None = None
 
     def to_dict(self):
         return {
@@ -62,60 +60,33 @@ class Slides(UserList):
         self._step_in_memory = None
         self._always_export_txt = always_export_txt
 
-    def merge(self, end: Optional[float] = None) -> bool:
+    def merge(self, start: int, end: int):
         if len(self.data) == 0:
-            raise ValueError("No slides to merge")
+            msg = "No slides to merge"
+            raise ValueError(msg)
 
-        first = 0
-        for i in range(len(self.data)):
-            slide = self.data[i]
-            if not slide.merged:
-                first = i
-                break
-
-        last = len(self.data) - 1
-        if end is not None:
-            for i in range(len(self.data)):
-                slide = self.data[i]
-                if slide.timeframe.end >= end:
-                    last = i
-                    break
-        else:
-            end = self.data[last].timeframe.end
-
-        if first == last:
-            logger.warning(
-                dedent(
-                    f"""Can't merge slide {first} with itself:
-                    First matched: {self.data[first].timeframe}
-                    Last matched: {self.data[last].timeframe}"""
-                )
-            )
-            return False
-
-        if not logger.isEnabledFor(logging.DEBUG):
-            logger.info(f"Merging slides {first + 1} until {last + 1}")
-        else:
-            logger.debug(
-                dedent(
-                    f"""Merging slides {first} until {last}:
-                    First matched: {self.data[first].timeframe}
-                    Last matched: {self.data[last].timeframe}"""
-                )
-            )
+        if (
+            start < 0
+            or end >= len(self.data)
+            or end < start
+            or end - start > len(self.data)
+        ):
+            msg = f"Invalid slide range: {start} - {end}"
+            raise ValueError(msg)
 
         transcription = " ".join(
-            [slide.transcription.strip() for slide in self.data[first : last + 1]]
+            [slide.transcription.strip() for slide in self.data[start : end + 1]]
         )
-        assert end is not None
-        if first > 0:
-            start = self.data[first - 1].timeframe.end
-        else:
-            start = self.data[0].timeframe.start
-        new_slide = Slide(transcription, TimeFrame(start, end))
-        new_slide.merged = True
-        self.data = self.data[:first] + [new_slide] + self.data[last + 1 :]
-        return True
+        timeframe = TimeFrame(
+            self.data[start].timeframe.start, self.data[end].timeframe.end
+        )
+        new_slide = Slide(
+            transcription,
+            timeframe,
+            tframe=self.data[start].tframe,
+            number=self.data[start].number,
+        )
+        self.data = self.data[:start] + [new_slide] + self.data[end + 1 :]
 
     def has_data(self) -> bool:
         return len(self.data) != 0
@@ -170,21 +141,21 @@ class Slides(UserList):
         last = steps.index(step) - 1
         if depends_on is Step.transcribe:
             return steps[last::-1]
-        else:
-            first = steps.index(depends_on) - 1
-            return steps[last:first:-1]
 
-    def load_from_dependencies(self, step: Step, depends_on: Step) -> Optional[Step]:
-        """Load data from previous steps
+        first = steps.index(depends_on) - 1
+        return steps[last:first:-1]
+
+    def load_from_dependencies(self, step: Step, depends_on: Step) -> Step | None:
+        """Load data from previous steps.
 
         Look for valid data from previous steps, from the current until depends_on.
 
         Args:
-            step (Step): The current step
-            depends_on (Optional[Step], optional): The step to stop loading at. Defaults to None
+            step: The current step
+            depends_on: The step to stop loading at. Defaults to None
 
         Returns:
-            Optional[Step]: The step that was loaded
+            The step that was loaded
         """
         for s in self.valid_dependencies(step, depends_on):
             logging.debug(f"Trying to load {s.value.filename}")
@@ -195,8 +166,10 @@ class Slides(UserList):
                 if self.load_step(s):
                     return s
 
-    def load(self, step: Step, depends_on: Optional[Step] = None) -> Optional[Step]:
-        """Load data
+        return None
+
+    def load(self, step: Step, depends_on: Step | None = None) -> Step | None:
+        """Load data.
 
         Checks for data from the current step, if found, it prompts the user if they want to run
         run again or skip.
@@ -207,11 +180,11 @@ class Slides(UserList):
         If data from the current step is not found, it tries to load from previous steps.
 
         Args:
-            step (Step): The step to load
-            depends_on (Optional[Step], optional): The step to stop loading at. Defaults to None.
+            step: The step to load
+            depends_on: The step to stop loading at. Defaults to None.
 
         Returns:
-            Optional[Step]: The step that was loaded
+            The step that was loaded
 
         Raises:
             Exception: If the step depends on another step that has not been run yet.
@@ -236,9 +209,8 @@ class Slides(UserList):
             return loaded
 
         # TODO: use a custom exception
-        raise Exception(
-            f'Step "{step.value.name}" depends on "{depends_on.value.name}", but "{depends_on.value.name}" has not been run yet.'
-        )
+        msg = f'Step "{step.value.name}" depends on "{depends_on.value.name}", but "{depends_on.value.name}" has not been run yet.'
+        raise Exception(msg)
 
     def save_temp_txt(self) -> Path:
         return self._store.temp_save(
