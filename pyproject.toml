@@ -72,8 +72,9 @@ select = [
     "C", # mccabe
     "S", # flake8-bandit
 
-    "C4",  # flake8-comprehensions
-    "D",   # pydocstyle
+    "C4", # flake8-comprehensions
+    # TODO: #63 enable once we have docstrings
+    # "D",   # pydocstyle
     "EM",  # flake8-errmsg
     "I",   # isort
     "PT",  # pytest
