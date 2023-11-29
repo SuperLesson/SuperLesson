@@ -29,9 +29,11 @@ Please check [the section on CUDA](#cuda-support) to learn more about GPU suppor
 
 ### Dependencies
 
-Install [poetry](https://python-poetry.org/) and run `poetry install` in order to install
-all the dependencies. Keep in mind that as the project is updated you should run have to run it
-again.
+Install [poetry](https://python-poetry.org/) and run `poetry install` in order to install all
+python dependencies.
+Keep in mind that as the project is updated you should run have to run it again.
+
+You also need to install [`wdiff`](https://www.gnu.org/software/wdiff/) for some verbose printing.
 
 ### Lesson files
 
@@ -64,9 +66,9 @@ This will execute all the following steps:
 
 1. `transcribe`
 2. `merge` segments using transition frames
-3. `enumerate` slides from tframes
-4. `replace` known bogus words
-5. `improve` punctuation using ChatGPT
+3. `replace` known bogus words
+4. `improve` punctuation using ChatGPT
+5. `enumerate` slides from tframes
 6. `annotate` the presentation
 
 You can also run individual steps using
@@ -77,7 +79,7 @@ poetry run [step]
 
 > Note: step names are highlighted above using monospace.
 
-### CUDA Support
+### CUDA support
 
 Transcriptions can be run faster on GPU.
 If you have an Nvidia GPU available, the transcription step can be run within a docker environment
@@ -96,7 +98,7 @@ poetry run superlesson LESSON --diff merge improve
 
 Note that only steps that generate some text output may be used.
 
-For this step you should install [`wdiff`](https://www.gnu.org/software/wdiff/). 
+> To run this step you need to install [`wdiff`](https://www.gnu.org/software/wdiff/). 
 
 ## Development
 
