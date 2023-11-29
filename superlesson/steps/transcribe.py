@@ -83,7 +83,7 @@ class Transcribe:
 
         logger.info("Running replicate")
         output = replicate.run(
-            "isinyaaa/whisperx:3720564e7790fad7d580a93d0a995a0451de7c2105359b6551efd42efc6bcaff",
+            "isinyaaa/whisperx:f2f27406afdd5f2bd8aab728e9c50eec8378dcf67381b42009051a156d83ddba",
             input={
                 "audio": url,
                 "language": "pt",

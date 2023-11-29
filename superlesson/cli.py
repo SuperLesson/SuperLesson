@@ -9,7 +9,7 @@ from .steps import Annotate, Transcribe, Transitions
 from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
-from .storage.utils import find_lesson_root, diff_words
+from .storage.utils import diff_words, find_lesson_root
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -94,9 +94,10 @@ def parse_args() -> Namespace:
             "medium",  # "medium.en",
             "large-v1",
             "large-v2",
+            "large-v3",
             "large",
         ],
-        default="large-v2",
+        default="large-v3",
         help="Choose whisper model size",
     )
     parser.add_argument(

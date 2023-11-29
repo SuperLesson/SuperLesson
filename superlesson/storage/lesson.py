@@ -68,7 +68,6 @@ class LessonFile:
                 str(sample_rate),
                 output_path,
             ],
-            check=True,
             stdout=subprocess.DEVNULL,
         )
 

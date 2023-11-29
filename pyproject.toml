@@ -26,7 +26,7 @@ annotate = "superlesson.cli:annotate_step"
 python = "^3.10"
 
 [tool.poetry.group.transcribe.dependencies]
-faster-whisper = "^0.9.0"
+faster-whisper = "^0.10.0"
 boto3 = "^1.28"
 replicate = "^0.20.0"
 tqdm = "^4.66"
@@ -36,7 +36,7 @@ pydub = "^0.25.1"
 
 [tool.poetry.group.improve.dependencies]
 python-dotenv = "^1.0"
-openai = "^1.2"
+openai = "^1.3"
 tiktoken = "^0.5.1"
 
 [tool.poetry.group.annotate.dependencies]
