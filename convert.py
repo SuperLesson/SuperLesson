@@ -1,8 +1,8 @@
-from datetime import timedelta
 import logging
-from sys import argv
-from pathlib import Path
 import re
+from datetime import timedelta
+from pathlib import Path
+from sys import argv
 from typing import Any
 
 from superlesson.steps import Annotate, Transitions
@@ -21,8 +21,6 @@ logger = logging.getLogger("superlesson")
 def parse_old_format(txt_path: Path) -> list[dict[str, Any]]:
     txt = txt_path.read_text()
 
-    # txt = re.sub(r"[%s]" % re.escape("""*_~"""), "\n", txt)
-
     # ==== xxxx tt=HH:MM:SS xxxxx
     segments = re.split(r"====.*tt=(\d{2}:\d{2}:\d{2}).*\n", txt)
 
@@ -34,7 +32,7 @@ def parse_old_format(txt_path: Path) -> list[dict[str, Any]]:
     def to_timedelta(h, m, s):
         return timedelta(hours=int(h), minutes=int(m), seconds=int(s))
 
-    timestamps = [to_timedelta(*segment.split(":")) for segment in segments[::2]]
+    times = [to_timedelta(*segment.split(":")) for segment in segments[::2]]
     return [
         {
             "transcription": transcription,
@@ -42,13 +40,11 @@ def parse_old_format(txt_path: Path) -> list[dict[str, Any]]:
                 "start": 0,
                 "end": 0,
             },
-            # HACK: we don't care about the actual timestamp, but we want to find the
-            # nearest tframe
-            "timestamp": (timestamp + timedelta(hours=21)).total_seconds(),
+            "timestamp": _time.total_seconds(),
             "tframe": None,
             "number": None,
         }
-        for transcription, timestamp in zip(segments[1::2], timestamps)
+        for transcription, _time in zip(segments[1::2], times, strict=True)
     ]
 
 
@@ -67,11 +63,15 @@ def main():
 
     if not txt_path.exists():
         raise Exception(f"File {txt_path} doesn't exist")
-    else:
-        logger.debug("Found old source")
+
+    logger.debug("Found old source")
 
     data = parse_old_format(txt_path)
     tframes = Transitions._get_transition_frames(lesson_root / "tframes")
+
+    if tframes[0].timestamp > timedelta(hours=21).total_seconds():
+        for tframe in tframes:
+            tframe.timestamp -= timedelta(hours=21).total_seconds()
 
     for i, obj in enumerate(data[1:]):
         improved = obj["timestamp"]
