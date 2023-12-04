@@ -10,6 +10,7 @@ SuperLesson (SL) uses [WhisperX](hhttps://github.com/m-bain/whisperX) through [R
 SL also uses ChatGPT to improve transcriptions.
 
 In order to access those services, the following keys are needed:
+
 ```raw
 OPENAI_API_KEY=<your_token>
 REPLICATE_API_TOKEN=<your_token>
@@ -21,11 +22,6 @@ This is necessary as Replicate will only take direct uploads of very small files
 
 To set your API keys, you can either pass them by environment variables, or put them in a `.env`
 file at the root of the repository.
-
-If you don't want to use Replicate, you can use `--local` flag to transcribe with [faster-whisper](https://github.com/guillaumekln/faster-whisper).
-Please check [the section on CUDA](#cuda-support) to learn more about GPU support.
-
-> Note that this may cause worse results, as faster-whisper doesn't support word level alignment.
 
 ### Dependencies
 
@@ -78,14 +74,6 @@ poetry run [step]
 ```
 
 > Note: step names are highlighted above using monospace.
-
-### CUDA support
-
-Transcriptions can be run faster on GPU.
-If you have an Nvidia GPU available, the transcription step can be run within a docker environment
-with CUDA by passing the `--with-docker` flag.
-
-If you prefer to run without a container, check out instructions on the [faster-whisper docs](https://github.com/guillaumekln/faster-whisper#gpu).
 
 ### Comparing steps
 
