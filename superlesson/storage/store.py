@@ -1,10 +1,10 @@
 import json as json_lib
 import logging
 import re
+from datetime import time
 from enum import Enum, unique
 from pathlib import Path
-from datetime import time
-from typing import Any, Optional
+from typing import Any
 
 from .utils import format_transcription
 
@@ -48,7 +48,7 @@ class Store:
                 "start": timestamp_to_seconds(start),
                 "end": timestamp_to_seconds(end),
             }
-            for start, end in map(lambda t: t.split(" - "), split_texts[1::3])
+            for start, end in (t.split(" - ") for t in split_texts[1::3])
         ]
 
         slide_numbers = split_texts[::3]
@@ -83,14 +83,14 @@ class Store:
 
         return data
 
-    def load(self, filename: str, load_txt: bool) -> Optional[list[Any]]:
+    def load(self, filename: str, load_txt: bool) -> list[Any] | None:
         if load_txt:
             txt_path = self._get_storage_path(filename, Format.txt)
             if txt_path.exists():
                 logger.info(f"Loading {txt_path}")
                 return self._parse_txt(txt_path)
 
-            else:
+            else:  # noqa: RET505
                 logger.info(
                     f"Couldn't load from file {txt_path}, make sure it's properly formatted"
                 )

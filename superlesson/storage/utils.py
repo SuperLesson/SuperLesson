@@ -44,7 +44,8 @@ def find_lesson_root(lesson: str) -> Path:
         lesson_root = lesson_root.resolve()
 
         if not lesson_root.exists():
-            raise ValueError(f"Lesson {lesson} not found")
+            msg = f"Lesson {lesson} not found"
+            raise ValueError(msg)
 
     logger.debug(f"Found lesson root: {lesson_root}")
     return lesson_root

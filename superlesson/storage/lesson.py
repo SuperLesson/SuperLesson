@@ -4,7 +4,6 @@ import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from .utils import find_lesson_root
 
@@ -79,7 +78,8 @@ class LessonFile:
         """Return the file type of a given file name."""
         mime_type, _ = mimetypes.guess_type(name)
         if mime_type is None:
-            raise ValueError(f"File type not found for {name}")
+            msg = f"File type not found for {name}"
+            raise ValueError(msg)
         mime_type = mime_type.split("/")[0]
         match mime_type:
             case "video":
@@ -93,7 +93,8 @@ class LessonFile:
                 if name.endswith(".pdf"):
                     file_type = FileType.slides
                 else:
-                    raise ValueError(f"File type not found for {name}")
+                    msg = f"File type not found for {name}"
+                    raise ValueError(msg)
         return file_type
 
 
@@ -105,8 +106,8 @@ class LessonFiles:
     def __init__(
         self,
         lesson: str,
-        transcription_source_path: Optional[Path] = None,
-        presentation_path: Optional[Path] = None,
+        transcription_source_path: Path | None = None,
+        presentation_path: Path | None = None,
     ):
         self.lesson_root = find_lesson_root(lesson)
 
@@ -117,7 +118,8 @@ class LessonFiles:
             # TODO: we should use lesson_root for storing data unconditionally
             root = transcription_source_path.resolve().parent
             if root != self.lesson_root:
-                raise ValueError("Transcription source must be in lesson root")
+                msg = "Transcription source must be in lesson root"
+                raise ValueError(msg)
             self._transcription_source = LessonFile(
                 transcription_source_path.name,
                 root,
@@ -126,7 +128,8 @@ class LessonFiles:
         if presentation_path is not None:
             root = presentation_path.resolve().parent
             if root != self.lesson_root:
-                raise ValueError("Presentation must be in lesson root")
+                msg = "Presentation must be in lesson root"
+                raise ValueError(msg)
             self._presentation = LessonFile(
                 presentation_path.name, presentation_path.resolve().parent
             )
@@ -163,7 +166,8 @@ class LessonFiles:
         if self._transcription_source is None:
             files = self._find_lesson_files([FileType.video, FileType.audio])
             if not files:
-                raise ValueError(f"Transcription file not found on {self.lesson_root}")
+                msg = f"Transcription file not found on {self.lesson_root}"
+                raise ValueError(msg)
             self._transcription_source = files[0]
             logger.debug(f"Transcription source: {self._transcription_source}")
 
@@ -180,12 +184,13 @@ class LessonFiles:
                     logger.debug(f"Presentation: {self._presentation}")
                     break
             if self._presentation is None:
-                raise ValueError(f"Presentation file not found on {self.lesson_root}")
+                msg = f"Presentation file not found on {self.lesson_root}"
+                raise ValueError(msg)
 
         return self._presentation
 
     def _find_lesson_files(
-        self, accepted_types: list[Optional[FileType]]
+        self, accepted_types: list[FileType | None]
     ) -> list[LessonFile]:
         for file_type in accepted_types:
             if file_type is None:

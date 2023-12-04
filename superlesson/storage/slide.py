@@ -99,13 +99,12 @@ class Slides(UserList):
         tframe_path = slide_obj.get("tframe") or slide_obj.get("png_path")
         if tframe_path is not None:
             tframe_path = Path(tframe_path)
-        slide = Slide(
+        return Slide(
             slide_obj["transcription"],
             TimeFrame(*timeframe),
             tframe=tframe_path,
             number=slide_obj["number"],
         )
-        return slide
 
     def _load_slides(self, data: list[Any], verbose: bool = False):
         slides: list[Slide] = []
@@ -137,7 +136,7 @@ class Slides(UserList):
 
     @staticmethod
     def valid_dependencies(step: Step, depends_on: Step) -> Sequence[Step]:
-        steps = Step.to_list()
+        steps = list(Step)
         last = steps.index(step) - 1
         if depends_on is Step.transcribe:
             return steps[last::-1]
