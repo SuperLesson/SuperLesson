@@ -27,7 +27,7 @@ python = "^3.10"
 
 [tool.poetry.group.transcribe.dependencies]
 faster-whisper = "^0.10.0"
-boto3 = "^1.28"
+boto3 = "^1.33"
 replicate = "^0.20.0"
 tqdm = "^4.66"
 
