@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
@@ -60,7 +60,10 @@ class Transcribe:
             segments = self._transcribe_with_replicate(s3_url)
         else:
             if not local and (
-                input("Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o") != "y"
+                input(
+                    "Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o"
+                )
+                != "y"
             ):
                 msg = "Couldn't run transcription."
                 raise Exception(msg)
@@ -134,13 +137,11 @@ class Transcribe:
         from faster_whisper import WhisperModel
 
         if cls._has_nvidia_gpu():
-            model = WhisperModel(model_size, device="cuda",
-                                 compute_type="int8_float16")
+            model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         else:
             threads = os.cpu_count() or 4
             model = WhisperModel(
-                model_size, device="cpu", cpu_threads=threads,
-                compute_type="auto"
+                model_size, device="cpu", cpu_threads=threads, compute_type="auto"
             )
 
         segments, info = model.transcribe(
@@ -261,8 +262,8 @@ class Transcribe:
             if len(words) != 2:
                 logger.warning(f"Invalid line: {line}")
                 continue
-            word = pattern.search(words[0]).group(1)
-            rep = pattern.search(words[1]).group(1)
+            word = cast(re.Match, pattern.search(words[0])).group(1)
+            rep = cast(re.Match, pattern.search(words[1])).group(1)
             logger.debug("Replacing %s with %s", word, rep)
             for slide in self.slides:
                 slide.transcription = re.sub(
@@ -376,7 +377,7 @@ class Transcribe:
 
         # merge punctuation with previous sentence
         # we iterate over len(splits) - 1 because, if it's even,
-        # we get the same result, and if it's odd, we skip the 
+        # we get the same result, and if it's odd, we skip the
         # invalid iteration at the end
         periods = []
         for i in range(0, len(splits) - 1, 2):
@@ -414,9 +415,8 @@ class Transcribe:
         try:
             client = AsyncOpenAI()
         except OpenAIError as e:
-            raise Exception(
-                "Please review README.md for instructions on how to set up your OpenAI token"
-            ) from e
+            msg = "Please review README.md for instructions on how to set up your OpenAI token"
+            raise Exception(msg) from e
 
         tasks = [
             asyncio.create_task(cls._complete_prompt(client, prompt.body, context))
@@ -435,7 +435,7 @@ class Transcribe:
         return completions
 
     @classmethod
-    async def _complete_prompt(cls, client, prompt: str, context: str) -> Optional[str]:
+    async def _complete_prompt(cls, client, prompt: str, context: str) -> str | None:
         import openai
 
         messages = [
