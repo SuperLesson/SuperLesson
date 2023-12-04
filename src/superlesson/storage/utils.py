@@ -39,9 +39,7 @@ def seconds_to_timestamp(s: float) -> str:
 def find_lesson_root(lesson: str) -> Path:
     lesson_root = Path(lesson)
     if not lesson_root.exists():
-        src_path = Path(__file__).parent / "../../../"
-        lesson_root = src_path / "lessons" / lesson
-        lesson_root = lesson_root.resolve()
+        lesson_root = Path.cwd() / "lessons" / lesson
 
         if not lesson_root.exists():
             msg = f"Lesson {lesson} not found"
