@@ -150,7 +150,7 @@ class Annotate:
 
         logger.debug(f"Opening {path}")
 
-        ret_code = subprocess.call(["kitty", "+kitten", "icat", str(path)])
+        ret_code = subprocess.call(["kitty", "+kitten", "icat", str(path)])  # noqa: S607
         if ret_code != 0:
             logger.warning(f"Error opening {path}")
 

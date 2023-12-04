@@ -3,7 +3,6 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.slide import TimeFrame

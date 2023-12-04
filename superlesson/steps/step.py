@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, unique
-from typing import Callable, Optional
 
 logger = logging.getLogger("superlesson")
 
@@ -14,8 +14,8 @@ RAN_STEP = False
 @dataclass
 class StepMetadata:
     name: str
-    filename: Optional[str] = None
-    instructions: Optional[str] = None
+    filename: str | None = None
+    instructions: str | None = None
 
     def in_storage(self):
         return self.filename is not None
@@ -32,16 +32,12 @@ class Step(Enum):
     # TODO: annotated pdf should be managed by storage layer
     annotate = StepMetadata(name="annotate")
 
-    @staticmethod
-    def to_list() -> list[Step]:
-        return list([s for s in Step])
-
     def __lt__(self, other: Step) -> bool:
-        steps = self.to_list()
+        steps = list(Step)
         return steps.index(self) < steps.index(other)
 
 
-def step(step: Step, depends_on: Optional[Step] = None):
+def step(step: Step, depends_on: Step | None = None):
     def decorator(func: Callable):
         def wrapper(instance, *args, **kwargs):
             from superlesson.storage import Slides
@@ -53,7 +49,7 @@ def step(step: Step, depends_on: Optional[Step] = None):
             slides = instance.slides
             assert isinstance(slides, Slides)
             if not RAN_STEP and slides.load(step, depends_on) is step:
-                return
+                return None
             logger.info(f"Running step {step.value}")
             ret = func(instance, *args, **kwargs)
             instance.slides.save(step)

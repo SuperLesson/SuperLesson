@@ -60,10 +60,7 @@ class Transcribe:
             segments = self._transcribe_with_replicate(s3_url)
         else:
             if not local and (
-                input(
-                    "Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o"
-                )
-                != "y"
+                input("Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o") != "y"
             ):
                 msg = "Couldn't run transcription."
                 raise Exception(msg)
@@ -137,11 +134,13 @@ class Transcribe:
         from faster_whisper import WhisperModel
 
         if cls._has_nvidia_gpu():
-            model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+            model = WhisperModel(model_size, device="cuda",
+                                 compute_type="int8_float16")
         else:
             threads = os.cpu_count() or 4
             model = WhisperModel(
-                model_size, device="cpu", cpu_threads=threads, compute_type="auto"
+                model_size, device="cpu", cpu_threads=threads,
+                compute_type="auto"
             )
 
         segments, info = model.transcribe(
@@ -198,7 +197,7 @@ class Transcribe:
             for segment in segments:
                 transcription_segments.append(segment)
                 logger.info(
-                    "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)
+                    "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)  # noqa: UP031
                 )
                 timestamp_last = round(segment.end)
                 time_now = time.time()
@@ -287,7 +286,8 @@ class Transcribe:
         - corrija qualquer erro de digitação ou de grafia.
         - faça as quebras de paragrafação que forem necessárias.
         - coloque as pontuações adequadas.
-        - a saída deve ser somente a resposta, sem frases como "aqui está o texto revisado e formatado".
+        - a saída deve ser somente a resposta, sem frases como
+        - "aqui está o texto revisado e formatado".
         - NÃO FAÇA NENHUMA MODIFICAÇÃO DE CONTEÚDO, SOMENTE DE FORMATAÇÃO.
         """
 
@@ -375,8 +375,9 @@ class Transcribe:
             splits = splits[:-1]
 
         # merge punctuation with previous sentence
-        # we iterate over len(splits) - 1 because, if it's even, we get the same result, and if
-        # it's odd, we skip the invalid iteration at the end
+        # we iterate over len(splits) - 1 because, if it's even,
+        # we get the same result, and if it's odd, we skip the 
+        # invalid iteration at the end
         periods = []
         for i in range(0, len(splits) - 1, 2):
             periods.append(splits[i] + splits[i + 1])
@@ -461,5 +462,4 @@ class Transcribe:
 
         words1 = paragraph1.split()
         words2 = paragraph2.split()
-        similarity_ratio = difflib.SequenceMatcher(None, words1, words2).ratio()
-        return similarity_ratio
+        return difflib.SequenceMatcher(None, words1, words2).ratio()
