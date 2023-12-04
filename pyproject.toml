@@ -20,9 +20,6 @@ click = "^8.1.7"
 boto3 = "^1.28"
 replicate = "^0.20.0"
 
-[tool.poetry.group.tmarks.dependencies]
-pydub = "^0.25.1"
-
 [tool.poetry.group.improve.dependencies]
 python-dotenv = "^1.0"
 openai = "^1.3"

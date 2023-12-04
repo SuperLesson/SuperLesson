@@ -41,7 +41,7 @@ def main():
     if lesson_files.transcription_source.file_type == FileType.audio:
         raise NotImplementedError("Transcribing from audio is not implemented yet")
     transitions = Transitions(slides, lesson_files.transcription_source)
-    transitions.merge_segments(args.use_silences)
+    transitions.merge_segments()
     input("Press Enter to replace words.")
     transcribe.replace_words()
     input("Press Enter to improve punctuation.")
@@ -79,11 +79,6 @@ def parse_args() -> Namespace:
         type=Path,
         default=None,
         help="Path to annotation source (has to be a PDF file)",
-    )
-    parser.add_argument(
-        "--use-silences",
-        action="store_true",
-        help="Use silences to improve transition times",
     )
     mut_group = parser.add_mutually_exclusive_group()
     mut_group.add_argument(
@@ -139,8 +134,8 @@ def check_differences(lesson: str, prev: Step, next: Step):
 
 
 def merge_step():
-    args, transitions = single_step_setup(Transitions)
-    transitions.merge_segments(args.use_silences)
+    _, transitions = single_step_setup(Transitions)
+    transitions.merge_segments()
 
 
 def replace_step():
