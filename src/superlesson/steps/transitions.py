@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
-from superlesson.storage.slide import TimeFrame
 from superlesson.storage.utils import seconds_to_timestamp
 
 from .step import Step, step
@@ -25,7 +24,7 @@ class Transitions:
         self.slides = slides
 
     @step(Step.merge, Step.transcribe)
-    def merge_segments(self, using_silences: bool):
+    def merge_segments(self):
         tframes_path = self._transcription_source.path / "tframes"
         try:
             tframes = self._get_transition_frames(tframes_path)
@@ -34,12 +33,12 @@ class Transitions:
             raise Exception(msg) from e
 
         if tframes:
-            improved = self._improve_transitions(
-                [frame.timestamp for frame in tframes], using_silences
+            timestamps = self._improve_transitions(
+                [frame.timestamp for frame in tframes]
             )
 
             start = 0
-            for tframe, time in zip(tframes, improved, strict=True):
+            for tframe, time in zip(tframes, timestamps, strict=True):
                 end = next(
                     (
                         i
@@ -95,13 +94,11 @@ class Transitions:
         return tframes
 
     def _improve_transitions(
-        self, timestamps: list[float], using_silences: bool, threshold: float = 3.0
+        self,
+        timestamps: list[float],
+        threshold: float = 3.0,
     ) -> list[float]:
-        references = (
-            self._find_silence_references()
-            if using_silences
-            else self._get_period_end_times()
-        )
+        references = self._get_period_end_times()
 
         if not references:
             logger.warning("No references found, skipping improvement")
@@ -114,7 +111,7 @@ class Transitions:
         def log(before, after):
             diff = after - before
             sign = "+" if diff > 0 else "-"
-            logger.info(
+            logger.debug(
                 "Replaced transition time %s with %s (%s)",
                 seconds_to_timestamp(before),
                 seconds_to_timestamp(after),
@@ -123,17 +120,14 @@ class Transitions:
 
         si = 0
         for ti, time in enumerate(timestamps):
-            while si < len(references) and references[si].end < time:
+            while si < len(references) and references[si] - threshold < time:
                 si += 1
             if si < len(references):
                 ref = references[si]
-                if ref.start <= time <= ref.end:
+                if ref - threshold <= time <= ref + threshold:
                     # long silences shouldn't be a problem
-                    improved[ti] = ref.end
-                    log(time, ref.end)
-                elif time < ref.start and abs(timestamps[ti] - ref.start) < threshold:
-                    improved[ti] = ref.start
-                    log(time, ref.start)
+                    improved[ti] = ref
+                    log(time, ref)
 
         if improved != timestamps:
             logger.info("Improved transition times")
@@ -141,39 +135,16 @@ class Transitions:
 
         return improved
 
-    def _find_silence_references(self) -> list[TimeFrame]:
-        import pydub
-
-        audio_path = self._transcription_source.extract_audio()
-        audio = pydub.AudioSegment.from_wav(audio_path)
-        logger.debug("Audio duration: %s", seconds_to_timestamp(audio.duration_seconds))
-
-        silences = []
-        for threshold_offset in range(-6, -10, -2):
-            silence_thresh = audio.dBFS + threshold_offset
-            logger.info("Looking for silences using threshold %s", silence_thresh)
-            silences = pydub.silence.detect_silence(
-                audio,
-                min_silence_len=800,
-                silence_thresh=silence_thresh,
-                seek_step=1,
-            )
-            if len(silences) > 0:
-                logger.debug("Found silences: %s", silences)
-                break
-            logger.debug("Found no silences with threshold offset %s", threshold_offset)
-        return [TimeFrame((start / 1000), (end / 1000)) for start, end in silences]
-
-    def _get_period_end_times(self) -> list[TimeFrame]:
+    def _get_period_end_times(self) -> list[float]:
         punctuation = [".", "?", "!"]
 
         period_end_times = []
         for slide in self.slides:
             if slide.transcription[-1] in punctuation:
-                period_end_times.append(slide.timeframe)
+                period_end_times.append(slide.timeframe.end)
 
         logger.debug(
             "Period end times: %s",
-            period_end_times,
+            [seconds_to_timestamp(time) for time in period_end_times],
         )
         return period_end_times
