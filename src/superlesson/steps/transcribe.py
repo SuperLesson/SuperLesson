@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import re
-import subprocess
 import time
 from dataclasses import dataclass
 from hashlib import sha256
@@ -46,28 +45,21 @@ class Transcribe:
         self.slides = slides
 
     @step(Step.transcribe)
-    def single_file(self, model_size: str, local: bool):
-        bench_start = time.time()
-
+    def single_file(self):
         audio_path = self._transcription_source.extract_audio(overwrite=True)
 
-        if not local and os.getenv("REPLICATE_API_TOKEN"):
-            s3_url = self._upload_file_to_s3(audio_path)
+        if not os.getenv("REPLICATE_API_TOKEN"):
+            msg = "See README.md for instructions on how to set up your environment to run superlesson."
+            raise Exception(msg)
 
-            if not model_size.startswith("large"):
-                logger.info("Ignoring model size and using large instead")
+        bench_start = time.time()
 
-            segments = self._transcribe_with_replicate(s3_url)
-        else:
-            if not local and (
-                input(
-                    "Replicate token not set. Do you want to run Whisper locally? (y)es/(N)o"
-                )
-                != "y"
-            ):
-                msg = "Couldn't run transcription."
-                raise Exception(msg)
-            segments = self._local_transcription(audio_path, model_size)
+        s3_url = self._upload_file_to_s3(audio_path)
+
+        bench_duration = time.time() - bench_start
+        logger.info(f"Took {bench_duration} to upload to S3")
+
+        segments = self._transcribe_with_replicate(s3_url)
 
         for segment in segments:
             self.slides.append(
@@ -131,117 +123,6 @@ class Transcribe:
 
         logger.info(f"{file} uploaded to S3 as {s3_name}")
         return s3_path
-
-    @classmethod
-    def _local_transcription(cls, transcription_path: Path, model_size: str):
-        from faster_whisper import WhisperModel
-
-        if cls._has_nvidia_gpu():
-            model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
-        else:
-            threads = os.cpu_count() or 4
-            model = WhisperModel(
-                model_size, device="cpu", cpu_threads=threads, compute_type="auto"
-            )
-
-        segments, info = model.transcribe(
-            str(transcription_path),
-            beam_size=5,
-            language="pt",
-            vad_filter=True,
-        )
-
-        logger.info(
-            f"Detected language {info.language} with probability {info.language_probability}"
-        )
-
-        return cls._run_with_pbar(segments, info)
-
-    @staticmethod
-    def _has_nvidia_gpu():
-        try:
-            subprocess.check_output("nvidia-smi")
-            return True
-        except Exception:
-            return False
-
-    # taken from https://github.com/guillaumekln/faster-whisper/issues/80#issuecomment-1565032268
-    @classmethod
-    def _run_with_pbar(cls, segments, info):
-        import io
-        from threading import Thread
-
-        from tqdm import tqdm
-
-        duration = round(info.duration)
-        bar_f = "{percentage:3.0f}% |  {remaining}  | {rate_noinv_fmt}"
-        print("  %  | remaining |  rate")
-
-        capture = io.StringIO()  # capture progress bars from tqdm
-
-        with tqdm(
-            file=capture,
-            total=duration,
-            unit=" audio seconds",
-            smoothing=0.00001,
-            bar_format=bar_f,
-        ) as pbar:
-            global timestamp_prev, timestamp_last
-            timestamp_prev = 0  # last timestamp in previous chunk
-            timestamp_last = 0  # current timestamp
-            last_burst = 0.0  # time of last iteration burst aka chunk
-            set_delay = (
-                0.1  # max time it takes to iterate chunk & minimum time between chunks
-            )
-            jobs = []
-            transcription_segments = []
-            for segment in segments:
-                transcription_segments.append(segment)
-                logger.info(
-                    "[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text)  # noqa: UP031
-                )
-                timestamp_last = round(segment.end)
-                time_now = time.time()
-                if time_now - last_burst > set_delay:  # catch new chunk
-                    last_burst = time_now
-                    job = Thread(
-                        target=cls._pbar_delayed(set_delay, capture, pbar),
-                        daemon=False,
-                    )
-                    jobs.append(job)
-                    job.start()
-
-            for job in jobs:
-                job.join()
-
-            if timestamp_last < duration:  # silence at the end of the audio
-                pbar.update(duration - timestamp_last)
-                print(
-                    "\33]0;" + capture.getvalue().splitlines()[-1] + "\a",
-                    end="",
-                    flush=True,
-                )
-                print(capture.getvalue().splitlines()[-1])
-
-        return transcription_segments
-
-    @staticmethod
-    def _pbar_delayed(set_delay, capture, pbar):
-        """Gets last timestamp from chunk"""
-
-        def pbar_update():
-            global timestamp_prev
-            time.sleep(set_delay)  # wait for whole chunk to be iterated
-            pbar.update(timestamp_last - timestamp_prev)
-            print(
-                "\33]0;" + capture.getvalue().splitlines()[-1] + "\a",
-                end="",
-                flush=True,
-            )
-            print(capture.getvalue().splitlines()[-1])
-            timestamp_prev = timestamp_last
-
-        return pbar_update
 
     @step(Step.replace, Step.merge)
     def replace_words(self):

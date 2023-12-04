@@ -1,6 +1,4 @@
 import logging
-import subprocess
-import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Any
@@ -37,10 +35,7 @@ def main():
 
     slides = Slides(lesson_files.lesson_root, args.debug)
     transcribe = Transcribe(slides, lesson_files.transcription_source)
-    if args.with_docker:
-        run_docker()
-    else:
-        transcribe.single_file(args.model_size, args.transcribe_locally)
+    transcribe.single_file()
     input("Press Enter to merge segments.")
     # TODO: Add option to use audio as source for transcription
     if lesson_files.transcription_source.file_type == FileType.audio:
@@ -86,34 +81,9 @@ def parse_args() -> Namespace:
         help="Path to annotation source (has to be a PDF file)",
     )
     parser.add_argument(
-        "--model-size",  # model only works with pt now
-        choices=[
-            "tiny",  # "tiny.en",
-            "base",  # "base.en",
-            "small",  # "small.en",
-            "medium",  # "medium.en",
-            "large-v1",
-            "large-v2",
-            "large-v3",
-            "large",
-        ],
-        default="large-v3",
-        help="Choose whisper model size",
-    )
-    parser.add_argument(
-        "--transcribe-locally",
-        action="store_true",
-        help="Use faster whisper to transcribe locally",
-    )
-    parser.add_argument(
         "--use-silences",
         action="store_true",
         help="Use silences to improve transition times",
-    )
-    parser.add_argument(
-        "--with-docker",
-        action="store_true",
-        help="Run transcription step using the docker environment",
     )
     mut_group = parser.add_mutually_exclusive_group()
     mut_group.add_argument(
@@ -150,35 +120,8 @@ def single_step_setup(_class: Any) -> tuple[Namespace, Any]:
 
 
 def transcribe_step():
-    args, transcribe = single_step_setup(Transcribe)
-
-    if args.with_docker:
-        run_docker()
-    else:
-        transcribe.single_file(args.model_size, args.transcribe_locally)
-
-
-def run_docker():
-    subprocess.run(["docker", "build", "-t", "superlesson", "."])
-    subprocess.run(
-        [
-            "docker",
-            "run",
-            "-it",
-            "--rm",
-            "--name",
-            "superlesson",
-            "-v",
-            "./lessons:/SuperLesson/lessons",
-            "--gpus",
-            "all",
-            "superlesson",
-            "poetry",
-            "run",
-            "transcribe",
-        ]
-        + [arg for arg in sys.argv[1:] if arg != "--with-docker"]
-    )
+    _, transcribe = single_step_setup(Transcribe)
+    transcribe.single_file()
 
 
 def check_differences(lesson: str, prev: Step, next: Step):
