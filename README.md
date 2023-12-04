@@ -3,7 +3,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/badge/Python-3.10%2C%203.11%2C%203.12-blue)](https://www.python.org/downloads/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
-
 ## Setup
 
 SuperLesson (SL) uses [WhisperX](hhttps://github.com/m-bain/whisperX) through [Replicate](https://replicate.com) to transcribe audio.
