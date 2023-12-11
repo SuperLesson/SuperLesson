@@ -35,6 +35,7 @@ class Context:
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enables verbose mode.")
 @click.option("--debug", is_flag=True, help="Enables verbose mode.")
+@click.version_option()
 @click.pass_context
 def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
     """Your CLI application for processing lessons."""
