@@ -1,8 +1,8 @@
 import pytest
+from superlesson.storage import LessonFiles
 
-from src.storage import LessonFiles
 
-
+@pytest.fixture()
 def lesson_files(tmp_path_factory):
     # we need an mp4 and a pdf
     lesson_root = tmp_path_factory.mktemp("lesson-1")
@@ -14,7 +14,7 @@ def lesson_files(tmp_path_factory):
 
 def test_lesson_root(tmp_path, lesson_files):
     lesson_root = tmp_path / "lesson-1"
-    assert lesson_files.lesson_root == str(lesson_root)
+    assert lesson_files.lesson_root == lesson_root
 
 
 def test_discovery(lesson_files):
@@ -22,8 +22,8 @@ def test_discovery(lesson_files):
 
 
 def test_transcription_source(lesson_files):
-    assert lesson_files.transcription_source.name == "lesson-1.mp4"
+    assert lesson_files.transcription_source.name == "video.mp4"
 
 
 def test_notes_file(lesson_files):
-    assert lesson_files.presentation.name == "lesson-1.pdf"
+    assert lesson_files.presentation.name == "presentation.pdf"
