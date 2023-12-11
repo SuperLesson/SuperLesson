@@ -18,7 +18,7 @@ sl = "superlesson.cli:cli"
 [tool.poetry.dependencies]
 python = "^3.10"
 click = "^8.1.7"
-boto3 = "^1.28"
+boto3 = "^1.33"
 replicate = "^0.20.0"
 python-dotenv = "^1.0"
 openai = "^1.3"
