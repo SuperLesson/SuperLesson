@@ -39,9 +39,6 @@ class Context:
 @click.pass_context
 def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
     """Your CLI application for processing lessons."""
-    if ctx.invoked_subcommand == "diff":
-        return
-
     lesson_files = LessonFiles(lesson, transcribe_with, annotate_with)
     ctx.obj = Context(
         lesson_files,
@@ -136,18 +133,23 @@ def annotate(ctx):
 
 
 @cli.command()
-@click.argument("lesson")
-@click.argument("previous", type=click.Choice([step.name for step in Step]))
-@click.argument("next", type=click.Choice([step.name for step in Step]))
-def diff(lesson, previous, next):
+@click.argument(
+    "previous",
+    type=click.Choice([step.name for step in Step if step.value.in_storage()]),
+)
+@click.argument(
+    "next", type=click.Choice([step.name for step in Step if step.value.in_storage()])
+)
+@click.pass_context
+def diff(ctx, previous, next):
     """Show differences in a LESSON from ."""
-    lesson_root = find_lesson_root(lesson)
+    lesson_root = ctx.obj.lesson_files.lesson_root
     prev_slides = Slides(lesson_root)
-    prev_slides.load_step(previous)
+    prev_slides.load_step(Step[previous])
     prev_file = prev_slides.save_temp_txt()
 
     next_slides = Slides(lesson_root)
-    next_slides.load_step(next)
+    next_slides.load_step(Step[next])
     next_file = next_slides.save_temp_txt()
 
     logger.debug("Running wdiff")
@@ -166,5 +168,4 @@ def diff(lesson, previous, next):
 
 
 if __name__ == "__main__":
-    print("meow")
     cli()
