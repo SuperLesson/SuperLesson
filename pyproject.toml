@@ -13,7 +13,7 @@ license = "MIT"
 repository = "https://github.com/SuperLesson/SuperLesson"
 
 [tool.poetry.scripts]
-sl = "superlesson.cli:cli"
+sl = "superlesson.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"

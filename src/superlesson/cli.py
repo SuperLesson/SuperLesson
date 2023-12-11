@@ -7,7 +7,6 @@ import click
 from .steps.step import Step
 from .storage import LessonFiles, Slides
 from .storage.lesson import FileType
-from .storage.utils import find_lesson_root
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -165,7 +164,3 @@ def diff(ctx, previous, next):
         ),
         shell=True,
     )
-
-
-if __name__ == "__main__":
-    cli()
