@@ -52,10 +52,10 @@ lessons/
 To run SL execute
 
 ```sh
-poetry run superlesson [lesson-id]
+poetry run sl [lesson-id]
 ```
 
-> A list of options is available through `poetry run superlesson --help`
+> A list of options is available through `poetry run sl --help`
 
 This will execute all the following steps:
 
@@ -69,7 +69,7 @@ This will execute all the following steps:
 You can also run individual steps using
 
 ```bash
-poetry run [step]
+poetry run sl [lesson-id] [step]
 ```
 
 > Note: step names are highlighted above using monospace.
@@ -77,15 +77,15 @@ poetry run [step]
 ### Comparing steps
 
 If you think some step is misbehaving, or would simply like to see what is happening, you can use
-the `--diff` flag followed by the two steps you want to compare, e.g.:
+the `diff` command followed by the two steps you want to compare, e.g.:
 
 ```
-poetry run superlesson LESSON --diff merge improve
+poetry run sl [lesson-id] diff merge improve
 ```
 
 Note that only steps that generate some text output may be used.
 
-> To run this step you need to install [`wdiff`](https://www.gnu.org/software/wdiff/). 
+> Diffing requires [`wdiff`](https://www.gnu.org/software/wdiff/) to be installed.
 
 ## Development
 
@@ -105,7 +105,7 @@ poetry run pytest
 You can use `pyenv` to manage python versions. After you've installed `pyenv`, run
 
 ```bash
-$ pyenv install 3.10.11
-$ pyenv local 3.10.11
+$ pyenv install 3.10
+$ pyenv local 3.10
 $ poetry env use $(which python3)
 ```
