@@ -29,7 +29,7 @@ typst = "^0.10.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
 hypothesis = "*"
-ruff = "^0.1.7"
+ruff = "^0.1.8"
 
 [build-system]
 requires = ["poetry-core"]
