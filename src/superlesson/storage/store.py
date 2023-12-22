@@ -85,15 +85,13 @@ class Store:
 
     def load(self, filename: str, load_txt: bool) -> list[Any] | None:
         if load_txt:
-            txt_path = self._get_storage_path(filename, Format.txt)
-            if txt_path.exists():
+            if (txt_path := self._get_storage_path(filename, Format.txt)).exists():
                 logger.info(f"Loading {txt_path}")
                 return self._parse_txt(txt_path)
 
-            else:  # noqa: RET505
-                logger.info(
-                    f"Couldn't load from file {txt_path}, make sure it's properly formatted"
-                )
+            logger.info(
+                f"Couldn't load from file {txt_path}, make sure it's properly formatted"
+            )
 
         json_path = self._get_storage_path(filename, Format.json)
         if json_path.exists():
