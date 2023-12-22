@@ -20,6 +20,8 @@ logger = logging.getLogger("superlesson")
 class Context:
     lesson_files: LessonFiles
     slides: Slides
+    tframes_threshold: float
+    tframes_interval: float
 
 
 @click.group(invoke_without_command=True)
@@ -31,18 +33,36 @@ class Context:
     help="Path for transcribe configuration.",
 )
 @click.option(
+    "--tframes-threshold",
+    "-tt",
+    type=float,
+    default=0.0004,
+    show_default=True,
+    help="Threshold for tframe image dissimilarity."
+)
+@click.option(
+    "--tframes-interval",
+    "-ti",
+    type=float,
+    default=2,
+    show_default=True,
+    help="Threshold for tframe image dissimilarity."
+)
+@click.option(
     "--annotate-with", "-a", type=click.Path(), help="Path for annotate configuration."
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enables verbose mode.")
 @click.option("--debug", is_flag=True, help="Enables verbose mode.")
 @click.version_option()
 @click.pass_context
-def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
+def cli(ctx, lesson, transcribe_with, tframes_interval, tframes_threshold, annotate_with, verbose, debug):
     """Your CLI application for processing lessons."""
     lesson_files = LessonFiles(lesson, transcribe_with, annotate_with)
     ctx.obj = Context(
         lesson_files,
         Slides(lesson_files.lesson_root, verbose),
+        tframes_threshold,
+        tframes_interval
     )
 
     if debug:
@@ -54,6 +74,8 @@ def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
         return
 
     ctx.invoke(transcribe)
+    input("Press Enter to extract tframes.")
+    ctx.invoke(tframes)
     input("Press Enter to merge segments.")
     ctx.invoke(merge)
     input("Press Enter to replace words.")
@@ -80,12 +102,29 @@ def transcribe(ctx):
 
 @cli.command()
 @click.pass_context
+def tframes(ctx):
+    """Merge words."""
+    from .steps import Transitions
+
+    Transitions(
+        ctx.obj.slides,
+        ctx.obj.lesson_files.transcription_source,
+        ctx.obj.tframes_threshold,
+        ctx.obj.tframes_interval
+    ).extract_tframes()
+
+
+@cli.command()
+@click.pass_context
 def merge(ctx):
     """Merge words."""
     from .steps import Transitions
 
     Transitions(
-        ctx.obj.slides, ctx.obj.lesson_files.transcription_source
+        ctx.obj.slides,
+        ctx.obj.lesson_files.transcription_source,
+        ctx.obj.tframes_threshold,
+        ctx.obj.tframes_interval
     ).merge_segments()
 
 

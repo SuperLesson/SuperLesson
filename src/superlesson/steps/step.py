@@ -24,6 +24,7 @@ class StepMetadata:
 @unique
 class Step(Enum):
     transcribe = StepMetadata(name="transcribe", filename="transcription")
+    tframes = StepMetadata(name="extract tframes", filename="tframes")
     merge = StepMetadata(name="merge segments", filename="merged")
     replace = StepMetadata(name="replace words", filename="replaced")
     improve = StepMetadata(name="improve punctuation", filename="improved")

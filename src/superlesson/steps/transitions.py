@@ -1,8 +1,12 @@
 import datetime
 import logging
 import re
+import cv2
+import sys
+import os
 from dataclasses import dataclass
 from pathlib import Path
+from image_similarity_measures.quality_metrics import rmse
 
 from superlesson.storage import LessonFile, Slides
 from superlesson.storage.utils import seconds_to_timestamp
@@ -19,11 +23,51 @@ class TransitionFrame:
 
 
 class Transitions:
-    def __init__(self, slides: Slides, transcription_source: LessonFile):
+    def __init__(self, slides: Slides,
+                 transcription_source: LessonFile,
+                 tframes_threshold: float,
+                 tframes_interval: float):
         self._transcription_source = transcription_source
         self.slides = slides
+        self.tframes_interval = tframes_interval
+        self.tframes_threshold = tframes_threshold
 
-    @step(Step.merge, Step.transcribe)
+    @step(Step.tframes, Step.transcribe)
+    def extract_tframes(self):
+        video_path = str(self._transcription_source.path) + '/' + self._transcription_source.name
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise Exception(f"Error: Could not open video file {video_path}")
+
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        timer = 0
+        timer_ts = 0
+        ret, frame = cap.read()
+        frames = [frame]
+        frames_ts = [seconds_to_timestamp(timer).replace(':', '-')]
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            timer += 1 / fps
+            timer_ts += 1 / fps
+            if timer >= self.tframes_interval:
+                timer = 0
+                diff = rmse(org_img=frames[-1], pred_img=frame)
+                if diff > self.tframes_threshold:
+                    frames.append(frame)
+                    frames_ts.append(seconds_to_timestamp(timer_ts).replace(':', '-'))
+
+        os.makedirs(os.path.dirname(video_path) + "/tframes", exist_ok=True)
+        for frame, timestamp in zip(frames, frames_ts):
+            path = os.path.dirname(video_path) + f"/tframes/frame_{timestamp}.jpg"
+            cv2.imwrite(path, frame)
+
+        cap.release()
+        return
+
+    @step(Step.merge, Step.tframes)
     def merge_segments(self):
         tframes_path = self._transcription_source.path / "tframes"
         try:
@@ -77,7 +121,7 @@ class Transitions:
 
         tframes = []
         for file in tframes_dir.iterdir():
-            match = re.search(r"(\d{2}-\d{2}-\d{2})\.\w+", file.name)
+            match = re.search(r"(\d{1,2}-\d{2}-\d{2})\.\w+", file.name)
             if match is None:
                 logger.warning("Couldn't parse transition time from %s", file.name)
                 continue

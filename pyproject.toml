@@ -25,6 +25,8 @@ openai = "^1.3"
 tiktoken = "^0.5.1"
 pypdf = { extras = ["crypto"], version = "^3.17" }
 typst = "^0.10.0"
+opencv-python = "^4.8.1.78"
+image-similarity-measures = "^0.3.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
