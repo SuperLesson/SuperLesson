@@ -24,48 +24,46 @@ class Merge:
         self.slides = slides
 
     @step(Step.merge, Step.transcribe)
-    def merge_segments(self):
+    def segments(self):
         if not self._tframes_path.exists():
             msg = f"Couldn't find transition frames at {self._tframes_path}"
             raise FileNotFoundError(msg)
 
-        if tframes := self._get_transition_frames(self._tframes_path):
-            timestamps = self._improve_transitions(
-                [frame.timestamp for frame in tframes]
-            )
-
-            start = 0
-            for tframe, time in zip(tframes, timestamps, strict=True):
-                end = next(
-                    (
-                        i
-                        for i, slide in enumerate(self.slides)
-                        if (end_time := slide.timeframe).end >= time
-                    ),
-                    len(self.slides),
-                )
-
-                logger.debug(
-                    f"Found segment {end + 1} with timeframe {end_time} >= {seconds_to_timestamp(time)}"
-                )
-
-                logger.info(f"Merging {end - start} words into slide {start + 1}")
-                try:
-                    self.slides.merge(start, end)
-                    self.slides[start].tframe = tframe.path
-                    start += 1
-                except ValueError as e:
-                    logger.warning(e)
-
-                    logger.warning(
-                        f"No transcription available between {self.slides[start].timeframe.start} and {seconds_to_timestamp(time)}"
-                    )
-                    logger.warning(f"Skipping tframe {tframe.path}")
-
-            self.slides.merge(start, len(self.slides) - 1)
-        else:
+        if not (tframes := self._get_transition_frames(self._tframes_path)):
             logger.warning("No transition frames found, merging all slides")
             self.slides.merge(0, len(self.slides) - 1)
+            return
+
+        timestamps = self._improve_transitions([frame.timestamp for frame in tframes])
+
+        start = 0
+        for tframe, time in zip(tframes, timestamps, strict=True):
+            end = next(
+                (
+                    i
+                    for i, slide in enumerate(self.slides)
+                    if (end_time := slide.timeframe).end >= time
+                ),
+                len(self.slides),
+            )
+
+            logger.debug(
+                f"Found segment {end + 1} with timeframe {end_time} >= {seconds_to_timestamp(time)}"
+            )
+
+            logger.info(f"Merging {end - start} words into slide {start + 1}")
+            try:
+                self.slides.merge(start, end)
+                self.slides[start].tframe = tframe.path
+                start += 1
+            except ValueError as e:
+                logger.warning(e)
+                logger.warning(
+                    f"No transcription available between {self.slides[start].timeframe.start} and {seconds_to_timestamp(time)}"
+                )
+                logger.warning(f"Skipping tframe {tframe.path}")
+
+        self.slides.merge(start, len(self.slides) - 1)
 
     @staticmethod
     def _get_transition_frames(tframes_dir: Path) -> list[TransitionFrame]:
