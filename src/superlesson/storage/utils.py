@@ -37,19 +37,6 @@ def seconds_to_timestamp(s: float) -> str:
     return timestamp
 
 
-def find_lesson_root(lesson: str) -> Path:
-    lesson_root = Path(lesson)
-    if not lesson_root.exists():
-        lesson_root = Path.cwd() / "lessons" / lesson
-
-        if not lesson_root.exists():
-            msg = f"Lesson {lesson} not found"
-            raise ValueError(msg)
-
-    logger.debug(f"Found lesson root: {lesson_root}")
-    return lesson_root
-
-
 def diff_words(before: Path, after: Path):
     start_red = r"$'\033[30;41m'"
     start_green = r"$'\033[30;42m'"

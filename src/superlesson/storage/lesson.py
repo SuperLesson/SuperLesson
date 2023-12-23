@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from .utils import find_lesson_root
-
 logger = logging.getLogger("superlesson")
 
 
@@ -109,7 +107,7 @@ class LessonFiles:
         transcription_source_path: Path | None = None,
         presentation_path: Path | None = None,
     ):
-        self.lesson_root = find_lesson_root(lesson)
+        self.lesson_root = self.find_lesson_root(lesson)
 
         self._files: list[LessonFile] = []
 
@@ -133,6 +131,19 @@ class LessonFiles:
             self._presentation = LessonFile(
                 presentation_path.name, presentation_path.resolve().parent
             )
+
+    @staticmethod
+    def find_lesson_root(lesson: str) -> Path:
+        lesson_root = Path(lesson)
+        if not lesson_root.exists():
+            lesson_root = Path.cwd() / "lessons" / lesson
+
+            if not lesson_root.exists():
+                msg = f"Lesson {lesson} not found"
+                raise ValueError(msg)
+
+        logger.debug(f"Found lesson root: {lesson_root}")
+        return lesson_root
 
     @property
     def files(self) -> list[LessonFile]:
