@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,21 +24,43 @@ class Annotate:
 
     @step(Step.annotate, Step.enumerate)
     def to_pdf(self):
-        from pypdf import PdfReader, PdfWriter, Transformation
+        from pypdf import PdfReader, PdfWriter
 
         pages = []
-        # FIXME: (#110) typst complains about invalid syntax in some documents
-        # current = self.slides[0].transcription
-        # for i in range(1, len(self.slides)):
-        #     current, next = self.fade_slide(
-        #         current, self.slides[i].transcription
-        #     )
-        #     pages.append(current)
-        #     current = next
-        # pages.append(current)
+        for slide in self.slides:
+            number = slide.number
 
-        pdf = PdfReader(self._presentation)
+            if number < 0 or number is None:
+                continue
 
+            pages.append(Page(slide.transcription, number))
+
+        small_pdf = self._resize_and_scale(self._presentation, scale=0.7)
+
+        page_width = int(PdfReader(small_pdf).pages[0].mediabox.width / 72)
+        transcription_pdf = self._compile_with_typst(pages, width=page_width)
+
+        merger = PdfWriter()
+        for i, page in enumerate(pages):
+            number = page.number
+            logger.debug(f"Adding slide {number} to annotated PDF")
+            merger.append(small_pdf, pages=(number, number + 1))
+            logger.debug(f"Adding transcription to slide {i}")
+            merger.append(transcription_pdf, pages=(i, i + 1))
+
+        output = self._presentation.parent / "annotations.pdf"
+        merger.write(output)
+        logger.info(f"Annotated PDF saved as {output}")
+
+    @classmethod
+    def _resize_and_scale(
+        cls, pdf_path: Path, width: int = 10, scale: float = 1
+    ) -> Path:
+        from pypdf import PdfReader, PdfWriter, Transformation
+
+        pdf = PdfReader(pdf_path)
+
+        # pypdf uses pt as default unit
         page_width = pdf.pages[0].mediabox.width
         page_height = pdf.pages[0].mediabox.height
 
@@ -53,8 +76,8 @@ class Annotate:
             return squarish * (1 - tolerance) < page_ratio < default * (1 + tolerance)
 
         if is_rectangle(page_width, page_height):
-            logger.debug("Resizing to 10 inches")
-            default_size = 10 * 72  # 10 inches
+            logger.debug(f"Resizing to {width} inches")
+            default_size = width * 72
             ratio = default_size / page_width
             logger.debug("Scaling by %.2f", ratio)
             page_width = default_size
@@ -62,59 +85,33 @@ class Annotate:
             ratio = 1
             logger.debug("Page aspect ratio is non-standard, scaling by 1")
 
-        # as page_width is already scaled, we only need to translate in relation to the 70% scale
         # we will move halfway between the whitespace to the right
-        x_translation = (1 - 0.7) / 2 * page_width
+        x_translation = (1 - scale) / 2 * page_width
         logger.debug("Translating by %.2f", x_translation / 72)
 
         op = (
             Transformation()
-            .scale(sx=0.7 * ratio, sy=0.7 * ratio)
+            .scale(sx=scale * ratio, sy=scale * ratio)
             .translate(tx=x_translation, ty=0)
         )
 
         temp_pdf = PdfWriter()
-
         for page in pdf.pages:
             page.mediabox.upper_right = (
                 page.mediabox.right * ratio,
-                page.mediabox.top * 0.7 * ratio,  # cut top margin
+                page.mediabox.top * scale * ratio,  # cut top margin
             )
             page.add_transformation(op)
             temp_pdf.add_page(page)
 
-        small_pdf_path = mktemp(suffix=".pdf")
-        temp_pdf.write(small_pdf_path)
-        logger.debug(f"scaled PDF saved as {small_pdf_path}")
+        rescaled_pdf = mktemp(suffix=".pdf")
+        temp_pdf.write(rescaled_pdf)
+        logger.debug(f"scaled PDF saved as {rescaled_pdf}")
+        return rescaled_pdf
 
-        for slide in self.slides:
-            number = slide.number
-
-            if number < 0 or number is None:
-                continue
-
-            pages.append(Page(slide.transcription, number))
-
-        transcription_pdf = self._compile_with_typst(pages, width=int(page_width // 72))
-
-        merger = PdfWriter()
-        for i, page in enumerate(pages):
-            number = page.number
-            logger.debug(f"Adding slide {number} to annotated PDF")
-            merger.append(small_pdf_path, pages=(number, number + 1))
-            logger.debug(f"Adding transcription to slide {i}")
-            merger.append(transcription_pdf, pages=(i, i + 1))
-
-        output = self._presentation.parent / "annotations.pdf"
-        merger.write(output)
-        logger.info(f"Annotated PDF saved as {output}")
-
-    @staticmethod
-    def emphasize(text: str) -> str:
-        return "_" + text + "_"
-
+    # FIXME: (#110) typst complains about invalid syntax in some documents
     @classmethod
-    def fade_slide(
+    def _fade_slide(
         cls, current: str, next: str, threshold: int = 20
     ) -> tuple[str, str]:
         dots = [".", "!", "?"]
@@ -142,17 +139,20 @@ class Annotate:
         next_index, words_in_next = text_before_dots(next, False)
         logger.debug(f"Fade out at word {words_in_next}")
 
-        current_emphasized = cls.emphasize(current[-current_index:] + " \u21E2")
+        def emphasize(text: str) -> str:
+            return "_" + text + "_"
+
+        current_emphasized = emphasize(current[-current_index:] + " \u21E2")
         logger.debug(f"Fade in text: {current_emphasized}")
         current = current[:-current_index] + current_emphasized
-        next_emphasized = cls.emphasize("\u21E2 " + next[:next_index])
+        next_emphasized = emphasize("\u21E2 " + next[:next_index])
         logger.debug(f"Fade out text: {next_emphasized}")
         next = next_emphasized + next[next_index:]
 
         return current, next
 
     @classmethod
-    def _compile_with_typst(cls, pages: list[Page], width: int = 10) -> Path:
+    def _compile_with_typst(cls, pages: Sequence[Page], width: int = 10) -> Path:
         import typst
 
         preamble = f"""
