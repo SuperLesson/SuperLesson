@@ -31,11 +31,9 @@ class Store:
 
     @staticmethod
     def _parse_txt(txt_path: Path) -> list[dict[str, Any]]:
-        split_texts = re.split(
-            r"====== SLIDE (\S*) \((.*)\) ======", txt_path.read_text()
-        )[1:]
-
-        transcriptions = split_texts[2::3]
+        raw_slides = re.split(
+            r"====== SLIDE (\S*) \((\S*) - (\S*)\) ======", txt_path.read_text()
+        )
 
         def timestamp_to_seconds(timestamp: str) -> float:
             if len(timestamp.split(":")[0]) == 1:
@@ -43,33 +41,22 @@ class Store:
             t = time.fromisoformat(timestamp)
             return (t.hour * 60 + t.minute) * 60 + t.second + t.microsecond / 1e6
 
-        timeframes = [
-            {
-                "start": timestamp_to_seconds(start),
-                "end": timestamp_to_seconds(end),
-            }
-            for start, end in (t.split(" - ") for t in split_texts[1::3])
-        ]
-
-        slide_numbers = split_texts[::3]
-
         def parse_to_int(value):
-            try:
+            if "0" < value[0] < "9":
                 return int(value)
-            except (ValueError, TypeError):
-                return None
+            return None
 
-        transcription_dicts = []
-
-        for i in range(len(transcriptions)):
-            transcription_dict = {
-                "transcription": format_transcription(transcriptions[i]),
-                "timeframe": timeframes[i],
-                "number": parse_to_int(slide_numbers[i]),
+        return [
+            {
+                "number": parse_to_int(raw_slides[i]),
+                "timeframe": {
+                    "start": timestamp_to_seconds(raw_slides[i + 1]),
+                    "end": timestamp_to_seconds(raw_slides[i + 2]),
+                },
+                "transcription": format_transcription(raw_slides[i + 3]),
             }
-            transcription_dicts.append(transcription_dict)
-
-        return transcription_dicts
+            for i in range(1, len(raw_slides), 4)
+        ]
 
     @staticmethod
     def _parse_json(json_path: Path) -> list[dict[str, Any]]:
