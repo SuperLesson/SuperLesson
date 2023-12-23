@@ -52,6 +52,12 @@ class Slide:
         return f"====== SLIDE {number} ({self.timeframe}) ======\n\n{format_transcription(self.transcription)}"
 
 
+@dataclass
+class Page:
+    text: str
+    number: int
+
+
 class Slides(UserList):
     def __init__(self, lesson_root: Path, always_export_txt: bool = False):
         super().__init__()
@@ -90,6 +96,13 @@ class Slides(UserList):
 
     def has_data(self) -> bool:
         return len(self.data) != 0
+
+    def as_pages(self) -> Sequence[Page]:
+        return [
+            Page(slide.transcription, number)
+            for slide in self.data
+            if (number := slide.number) and number > 0
+        ]
 
     @staticmethod
     def _load_slide(slide_obj: dict) -> Slide:

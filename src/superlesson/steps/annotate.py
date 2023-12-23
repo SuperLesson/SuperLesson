@@ -1,20 +1,14 @@
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 
 from superlesson.storage import Slides
+from superlesson.storage.slide import Page
 from superlesson.storage.utils import mktemp
 
 from .step import Step, step
 
 logger = logging.getLogger("superlesson")
-
-
-@dataclass
-class Page:
-    text: str
-    number: int
 
 
 class Annotate:
@@ -26,15 +20,7 @@ class Annotate:
     def to_pdf(self):
         from pypdf import PdfReader, PdfWriter
 
-        pages = []
-        for slide in self.slides:
-            number = slide.number
-
-            if number < 0 or number is None:
-                continue
-
-            pages.append(Page(slide.transcription, number))
-
+        pages = self.slides.as_pages()
         small_pdf = self._resize_and_scale(self._presentation, scale=0.7)
 
         page_width = int(PdfReader(small_pdf).pages[0].mediabox.width / 72)
