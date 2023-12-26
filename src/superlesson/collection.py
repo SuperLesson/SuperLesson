@@ -31,6 +31,9 @@ class Lesson:
         self.root = self.find_root(lesson)
 
         if transcription_source:
+            if self.guess_type(transcription_source.name) is not FileType.video:
+                msg = f"{transcription_source} must be a video file"
+                raise ValueError(msg)
             # TODO: we should use lesson_root for storing data unconditionally
             if transcription_source.resolve().parent != self.root:
                 msg = f"Transcription source must be in lesson root: {self.root}"
@@ -40,6 +43,9 @@ class Lesson:
             self._video = None
 
         if presentation:
+            if self.guess_type(presentation.name) is not FileType.slides:
+                msg = f"{presentation} must be a PDF file"
+                raise ValueError(msg)
             if presentation.resolve().parent != self.root:
                 msg = f"Presentation must be in lesson root: {self.root}"
                 raise ValueError(msg)
