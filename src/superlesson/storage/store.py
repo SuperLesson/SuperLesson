@@ -6,7 +6,7 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import Any
 
-from .utils import format_transcription
+from .utils import format_transcription, mktemp
 
 logger = logging.getLogger("superlesson")
 
@@ -89,11 +89,7 @@ class Store:
 
     @staticmethod
     def temp_save(txt_data: Any) -> Path:
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as temp_file:
+        with (temp_path := mktemp(suffix=".txt")).open("w") as temp_file:
             temp_path = Path(temp_file.name)
             logger.debug(f"Saving temp file to {temp_file.name}")
             temp_file.write(txt_data)

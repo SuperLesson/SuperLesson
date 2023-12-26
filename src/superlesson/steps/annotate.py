@@ -1,10 +1,10 @@
 import logging
-import tempfile
 from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
 
 from superlesson.storage import LessonFile, Slides
+from superlesson.storage.utils import mktemp
 
 from .step import Step, step
 
@@ -218,8 +218,7 @@ class Annotate:
             page.add_transformation(op)
             temp_pdf.add_page(page)
 
-        temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        small_pdf_path = temp_file.name
+        small_pdf_path = mktemp(suffix=".pdf")
         temp_pdf.write(small_pdf_path)
         logger.debug(f"scaled PDF saved as {small_pdf_path}")
 
@@ -290,7 +289,7 @@ class Annotate:
         return current, next
 
     @classmethod
-    def _compile_with_typst(cls, pages: list[Page], width: int = 10) -> str:
+    def _compile_with_typst(cls, pages: list[Page], width: int = 10) -> Path:
         import typst
 
         preamble = f"""
@@ -327,19 +326,17 @@ class Annotate:
 
 """
 
-        with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
+        with (typ_out := mktemp(suffix=".typ")).open("wb") as f:
             f.write(preamble.encode("utf-8"))
             f.write(
                 "\u21E2 \n#pagebreak()\n \u21E2".join(
                     [page.text for page in pages]
                 ).encode("utf-8")
             )
-            temp_file_name = f.name
-            logger.debug(f"Typst temp file saved as {temp_file_name}")
+        logger.debug(f"Typst temp file saved as {typ_out}")
 
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-            temp_output = f.name
-            typst.compile(temp_file_name, output=temp_output)
-            logger.debug(f"Typst temp pdf saved as {temp_output}")
+        temp_output = mktemp(suffix=".pdf")
+        typst.compile(typ_out, output=temp_output)
+        logger.debug(f"Typst temp pdf saved as {temp_output}")
 
         return temp_output

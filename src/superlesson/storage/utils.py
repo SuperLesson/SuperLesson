@@ -1,6 +1,7 @@
 import logging
 import re
 import subprocess
+import tempfile
 from datetime import timedelta
 from pathlib import Path
 from textwrap import fill
@@ -73,3 +74,7 @@ def diff_words(before: Path, after: Path):
         ),
         shell=True,
     )
+
+
+def mktemp(suffix: str = "") -> Path:
+    return Path(tempfile.NamedTemporaryFile(suffix=suffix, delete=False).name)
