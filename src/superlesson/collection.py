@@ -1,5 +1,6 @@
 import logging
 import mimetypes
+from collections.abc import Generator
 from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
@@ -26,6 +27,8 @@ class File:
     @staticmethod
     def _file_type(name: str) -> FileType:
         """Return the file type of a given file name."""
+        if name.endswith(".pdf"):
+            return FileType.slides
         mime_type, _ = mimetypes.guess_type(name)
         if mime_type is None:
             msg = f"File type not found for {name}"
@@ -33,49 +36,48 @@ class File:
         mime_type = mime_type.split("/")[0]
         match mime_type:
             case "video":
-                file_type = FileType.video
+                return FileType.video
             case "audio":
-                file_type = FileType.audio
+                return FileType.audio
             case _:
-                # application
-                if name.endswith(".pdf"):
-                    file_type = FileType.slides
-                else:
-                    msg = f"File type not found for {name}"
-                    raise ValueError(msg)
-        return file_type
+                msg = f"File type not found for {name}"
+                raise ValueError(msg)
+
+
+PathIterator = Generator[Path, None, None]
 
 
 class Lesson:
-    """Class to find all files for a given lesson id."""
+    """User lesson"""
 
     root: Path
 
     def __init__(
         self,
         lesson: str,
-        transcription_source_path: Path | None = None,
-        presentation_path: Path | None = None,
+        transcription_source: Path | None = None,
+        presentation: Path | None = None,
     ):
         self.root = self.find_root(lesson)
 
-        self._files: list[File] = []
-
-        self._video = None
-        if transcription_source_path is not None:
+        if transcription_source:
             # TODO: we should use lesson_root for storing data unconditionally
-            root = transcription_source_path.resolve().parent
-            if root != self.root:
-                msg = "Transcription source must be in lesson root"
+            if transcription_source.resolve().parent != self.root:
+                msg = f"Transcription source must be in lesson root: {self.root}"
                 raise ValueError(msg)
-            self._video = File(transcription_source_path)
-        self._presentation = None
-        if presentation_path is not None:
-            root = presentation_path.resolve().parent
-            if root != self.root:
-                msg = "Presentation must be in lesson root"
+            self._video = transcription_source
+        else:
+            self._video = None
+
+        if presentation:
+            if presentation.resolve().parent != self.root:
+                msg = f"Presentation must be in lesson root: {self.root}"
                 raise ValueError(msg)
-            self._presentation = File(presentation_path)
+            self._presentation = presentation
+        else:
+            self._presentation = None
+
+        self._files: list[File] = []
 
     @staticmethod
     def find_root(lesson: str) -> Path:
@@ -92,58 +94,57 @@ class Lesson:
 
     @property
     def files(self) -> list[File]:
-        """All usable files in lesson folder."""
-        if len(self._files) > 0:
-            return self._files
-
-        logger.info("Searching for files...")
-        for file in self.root.iterdir():
-            if file.name == "annotations.pdf":
-                continue
-            if file.is_dir():
-                continue
-            if file.name.startswith("."):
-                continue
-            if file.suffix == ".txt":
-                continue
-            try:
-                self._files.append(File(file))
-                logger.debug(f"Found file: {file}")
-            except ValueError:
-                logger.debug(f"Skipping file: {file}")
-
-        # TODO: test for duplicate file types
+        if not self._files:
+            for path in self.get_files(self.root):
+                try:
+                    file = File(path)
+                except ValueError:
+                    continue
+                self._files.append(file)
 
         return self._files
 
+    @classmethod
+    def get_files(cls, root: Path, max_depth: int = 0) -> PathIterator:
+        """All usable files in lesson folder."""
+        logger.info(f"Searching for files on {root}")
+        for path in root.iterdir():
+            if (
+                path.name.startswith(".")
+                or path.suffix == ".txt"
+                or path.name == "annotations.pdf"
+            ):
+                continue
+            if path.is_dir():
+                if max_depth > 0:
+                    yield from cls.get_files(path, max_depth - 1)
+            else:
+                yield path
+
     @property
     def video(self) -> Path:
-        """The file to be used for transcription."""
         if self._video is None:
-            file = self._find_first(FileType.video)
-            if not file:
+            if not (path := self._find_first(FileType.video)):
                 msg = f"Transcription file not found on {self.root}"
                 raise ValueError(msg)
-            self._video = file
+            self._video = path
             logger.debug(f"Transcription source: {self._video}")
 
-        return self._video.path
+        return self._video
 
     @property
     def presentation(self) -> Path:
-        """The file to be used for annotation."""
         if self._presentation is None:
-            file = self._find_first(FileType.slides)
-            if not file:
+            if not (path := self._find_first(FileType.slides)):
                 msg = f"Presentation file not found on {self.root}"
                 raise ValueError(msg)
-            self._presentation = file
+            self._presentation = path
             logger.debug(f"Presentation: {self._presentation}")
 
-        return self._presentation.path
+        return self._presentation
 
-    def _find_first(self, type: FileType) -> File | None:
+    def _find_first(self, type: FileType) -> Path | None:
         try:
-            return next(file for file in self.files if file.type is type)
+            return next(file.path for file in self.files if file.type is type)
         except StopIteration:
             return None
