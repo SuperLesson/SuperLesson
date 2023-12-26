@@ -1,7 +1,6 @@
 import logging
 import mimetypes
 from collections.abc import Generator
-from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
 
@@ -13,35 +12,6 @@ class FileType(Enum):
     video = "video"
     audio = "audio"
     slides = "slides"
-
-
-@dataclass
-class File:
-    """Class to represent a lesson file."""
-
-    path: Path
-
-    def __post_init__(self):
-        self.type = self._file_type(self.path.name)
-
-    @staticmethod
-    def _file_type(name: str) -> FileType:
-        """Return the file type of a given file name."""
-        if name.endswith(".pdf"):
-            return FileType.slides
-        mime_type, _ = mimetypes.guess_type(name)
-        if mime_type is None:
-            msg = f"File type not found for {name}"
-            raise ValueError(msg)
-        mime_type = mime_type.split("/")[0]
-        match mime_type:
-            case "video":
-                return FileType.video
-            case "audio":
-                return FileType.audio
-            case _:
-                msg = f"File type not found for {name}"
-                raise ValueError(msg)
 
 
 PathIterator = Generator[Path, None, None]
@@ -77,7 +47,7 @@ class Lesson:
         else:
             self._presentation = None
 
-        self._files: list[File] = []
+        self._files: list[Path] = []
 
     @staticmethod
     def find_root(lesson: str) -> Path:
@@ -93,16 +63,25 @@ class Lesson:
         return lesson_root
 
     @property
-    def files(self) -> list[File]:
+    def files(self) -> list[Path]:
         if not self._files:
-            for path in self.get_files(self.root):
-                try:
-                    file = File(path)
-                except ValueError:
-                    continue
-                self._files.append(file)
+            self._files = list(self.get_files(self.root))
 
         return self._files
+
+    @staticmethod
+    def guess_type(name: str) -> FileType | None:
+        """Return the MIME file type of a given file name."""
+        if name.endswith(".pdf"):
+            return FileType.slides
+
+        mime_type, _ = mimetypes.guess_type(name)
+        if not mime_type:
+            msg = f"File type not found for {name}"
+            raise ValueError(msg)
+        if mime_type.split("/")[0] == "video":
+            return FileType.video
+        return None
 
     @classmethod
     def get_files(cls, root: Path, max_depth: int = 0) -> PathIterator:
@@ -145,6 +124,8 @@ class Lesson:
 
     def _find_first(self, type: FileType) -> Path | None:
         try:
-            return next(file.path for file in self.files if file.type is type)
+            return next(
+                file for file in self.files if self.guess_type(file.name) == type
+            )
         except StopIteration:
             return None
