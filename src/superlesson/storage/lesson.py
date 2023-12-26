@@ -2,7 +2,7 @@ import logging
 import mimetypes
 import subprocess
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, unique
 from pathlib import Path
 
 from .utils import mktemp
@@ -10,6 +10,7 @@ from .utils import mktemp
 logger = logging.getLogger("superlesson")
 
 
+@unique
 class FileType(Enum):
     video = "video"
     audio = "audio"
@@ -81,8 +82,6 @@ class LessonFile:
                 file_type = FileType.video
             case "audio":
                 file_type = FileType.audio
-            case "text":
-                file_type = FileType.slides
             case _:
                 # application
                 if name.endswith(".pdf"):
@@ -172,11 +171,11 @@ class LessonFiles:
     def transcription_source(self) -> LessonFile:
         """The file to be used for transcription."""
         if self._transcription_source is None:
-            files = self._find_lesson_files([FileType.video, FileType.audio])
-            if not files:
+            file = self._find_first(FileType.video)
+            if not file:
                 msg = f"Transcription file not found on {self.lesson_root}"
                 raise ValueError(msg)
-            self._transcription_source = files[0]
+            self._transcription_source = file
             logger.debug(f"Transcription source: {self._transcription_source}")
 
         return self._transcription_source
@@ -185,30 +184,17 @@ class LessonFiles:
     def presentation(self) -> LessonFile:
         """The file to be used for annotation."""
         if self._presentation is None:
-            files = self._find_lesson_files([FileType.slides])
-            for file in files:
-                if file.name.endswith(".pdf"):
-                    self._presentation = file
-                    logger.debug(f"Presentation: {self._presentation}")
-                    break
-            if self._presentation is None:
+            file = self._find_first(FileType.slides)
+            if not file:
                 msg = f"Presentation file not found on {self.lesson_root}"
                 raise ValueError(msg)
+            self._presentation = file
+            logger.debug(f"Presentation: {self._presentation}")
 
         return self._presentation
 
-    def _find_lesson_files(
-        self, accepted_types: list[FileType | None]
-    ) -> list[LessonFile]:
-        for file_type in accepted_types:
-            if file_type is None:
-                continue
-            files = self._get_files(file_type)
-            if len(files) > 0:
-                return files
-
-        return []
-
-    def _get_files(self, file_type: FileType) -> list[LessonFile]:
-        """Get all files of a given type."""
-        return [file for file in self.files if file.file_type == file_type]
+    def _find_first(self, type: FileType) -> LessonFile | None:
+        try:
+            return next(file for file in self.files if file.file_type is type)
+        except StopIteration:
+            return None
