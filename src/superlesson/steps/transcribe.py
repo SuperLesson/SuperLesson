@@ -11,7 +11,7 @@ from typing import cast
 from superlesson.storage import LessonFile, Slide, Slides
 from superlesson.storage.slide import TimeFrame
 from superlesson.storage.store import Store
-from superlesson.storage.utils import diff_words
+from superlesson.storage.utils import diff_words, extract_audio
 
 from .step import Step, step
 
@@ -47,7 +47,7 @@ class Transcribe:
     def single_file(self):
         bench_start = time.time()
 
-        s3_url = self._upload_file_to_s3(self._video.extract_audio())
+        s3_url = self._upload_file_to_s3(extract_audio(self._video.path))
 
         bench_duration = time.time() - bench_start
         logger.info(f"Took {bench_duration} to upload to S3")

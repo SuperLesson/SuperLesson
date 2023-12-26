@@ -1,11 +1,8 @@
 import logging
 import mimetypes
-import subprocess
 from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
-
-from .utils import mktemp
 
 logger = logging.getLogger("superlesson")
 
@@ -33,41 +30,6 @@ class LessonFile:
     @property
     def full_path(self) -> Path:
         return self.path / self.name
-
-    def extract_audio(
-        self,
-        audio_codec: str = "pcm_s16le",
-        channels: int = 1,
-        sample_rate: int = 16000,
-    ) -> Path:
-        if self.file_type is FileType.audio:
-            logger.debug(f"{self.full_path} is already an audio file")
-            return self.full_path
-
-        output_path = mktemp(suffix=".wav")
-        logger.info(f"Extracting audio from {self.full_path}")
-
-        subprocess.run(
-            [  # noqa: S607
-                "ffmpeg",
-                "-loglevel",
-                "quiet",
-                "-i",
-                self.full_path,
-                "-vn",
-                "-acodec",
-                str(audio_codec),
-                "-ac",
-                str(channels),
-                "-ar",
-                str(sample_rate),
-                output_path,
-            ],
-            stdout=subprocess.DEVNULL,
-        )
-
-        logger.debug(f"Audio saved as {output_path}")
-        return output_path
 
     @staticmethod
     def _file_type(name: str) -> FileType:

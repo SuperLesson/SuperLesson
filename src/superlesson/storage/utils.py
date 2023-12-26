@@ -63,5 +63,37 @@ def diff_words(before: Path, after: Path):
     )
 
 
+def extract_audio(
+    video: Path,
+    audio_codec: str = "pcm_s16le",
+    channels: int = 1,
+    sample_rate: int = 16000,
+) -> Path:
+    output_path = mktemp(suffix=".wav")
+
+    logger.info(f"Extracting audio from {video}")
+    subprocess.run(
+        [  # noqa: S607
+            "ffmpeg",
+            "-loglevel",
+            "quiet",
+            "-i",
+            video,
+            "-vn",
+            "-acodec",
+            str(audio_codec),
+            "-ac",
+            str(channels),
+            "-ar",
+            str(sample_rate),
+            output_path,
+        ],
+        stdout=subprocess.DEVNULL,
+    )
+
+    logger.debug(f"Audio saved as {output_path}")
+    return output_path
+
+
 def mktemp(suffix: str = "") -> Path:
     return Path(tempfile.NamedTemporaryFile(suffix=suffix, delete=False).name)
