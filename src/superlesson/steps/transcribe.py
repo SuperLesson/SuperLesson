@@ -32,36 +32,31 @@ class Prompt:
 
 
 class Transcribe:
-    """Class to transcribe a lesson."""
-
     _bucket_name = "lesson-audios"
 
-    def __init__(self, slides: Slides, transcription_source: LessonFile):
+    def __init__(self, slides: Slides, video: LessonFile):
         from dotenv import load_dotenv
 
         load_dotenv()
 
-        self._transcription_source = transcription_source
+        self._lesson_root = slides.lesson_root
+        self._video = video
         self.slides = slides
 
     @step(Step.transcribe)
     def single_file(self):
-        audio_path = self._transcription_source.extract_audio(overwrite=True)
+        bench_start = time.time()
+
+        s3_url = self._upload_file_to_s3(self._video.extract_audio())
+
+        bench_duration = time.time() - bench_start
+        logger.info(f"Took {bench_duration} to upload to S3")
 
         if not os.getenv("REPLICATE_API_TOKEN"):
             msg = "See README.md for instructions on how to set up your environment to run superlesson."
             raise Exception(msg)
 
-        bench_start = time.time()
-
-        s3_url = self._upload_file_to_s3(audio_path)
-
-        bench_duration = time.time() - bench_start
-        logger.info(f"Took {bench_duration} to upload to S3")
-
-        segments = self._transcribe_with_replicate(s3_url)
-
-        for segment in segments:
+        for segment in self._transcribe_with_replicate(s3_url):
             self.slides.append(
                 Slide(segment.text, TimeFrame(segment.start, segment.end))
             )
@@ -126,7 +121,7 @@ class Transcribe:
 
     @step(Step.replace, Step.merge)
     def replace_words(self):
-        replacements_path = self._transcription_source.path / "replacements.txt"
+        replacements_path = self._lesson_root / "replacements.txt"
         if not replacements_path.exists():
             logger.warning(
                 f"{replacements_path} doesn't exist, so no replacements will be done"

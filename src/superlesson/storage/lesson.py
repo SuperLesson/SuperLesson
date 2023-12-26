@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .utils import mktemp
+
 logger = logging.getLogger("superlesson")
 
 
@@ -36,17 +38,12 @@ class LessonFile:
         audio_codec: str = "pcm_s16le",
         channels: int = 1,
         sample_rate: int = 16000,
-        overwrite: bool = False,
     ) -> Path:
         if self.file_type is FileType.audio:
             logger.debug(f"{self.full_path} is already an audio file")
             return self.full_path
 
-        output_path = output_path = self.full_path.with_suffix(".wav")
-        if not overwrite and output_path.exists():
-            logger.debug(f"Audio already extracted at {output_path}")
-            return output_path
-
+        output_path = mktemp(suffix=".wav")
         logger.info(f"Extracting audio from {self.full_path}")
 
         subprocess.run(
