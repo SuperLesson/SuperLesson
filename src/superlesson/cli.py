@@ -6,7 +6,6 @@ import click
 
 from .steps.step import Step
 from .storage import LessonFiles, Slides
-from .storage.lesson import FileType
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -63,9 +62,6 @@ def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
     input("Press Enter to enumerate slides.")
     ctx.invoke(enumerate)
     input("Press Enter to annotate.")
-    if lesson_files.presentation.file_type == FileType.video:
-        msg = "Annotating from video is not implemented yet"
-        raise NotImplementedError(msg)
     ctx.invoke(annotate)
 
 
