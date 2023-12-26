@@ -18,16 +18,16 @@ class Format(Enum):
 
 
 class Store:
-    def __init__(self, lesson_root: Path):
-        self._lesson_root = lesson_root
-        self._storage_root = lesson_root / ".data"
+    def __init__(self, root: Path):
+        self._root = root
+        self._data_path = root / ".data"
 
     def _get_storage_path(self, filename: str, format: Format) -> Path:
         if format is Format.json:
-            if not self._storage_root.exists():
-                self._storage_root.mkdir()
-            return self._storage_root / f"{filename}.json"
-        return self._lesson_root / f"{filename}.txt"
+            if not self._data_path.exists():
+                self._data_path.mkdir()
+            return self._data_path / f"{filename}.json"
+        return self._root / f"{filename}.txt"
 
     @staticmethod
     def _parse_txt(txt_path: Path) -> list[dict[str, Any]]:

@@ -5,9 +5,10 @@ from pathlib import Path
 from sys import argv
 from typing import Any
 
+from superlesson.collection import Lesson
 from superlesson.steps import Annotate, Transitions
 from superlesson.steps.step import Step
-from superlesson.storage import LessonFiles, Slides
+from superlesson.storage import Slides
 from superlesson.storage.utils import seconds_to_timestamp
 
 logging.basicConfig(
@@ -55,19 +56,16 @@ def nearest(tframes, timestamp):
 def main():
     logger.setLevel(logging.INFO)
 
-    lesson = argv[1]
-    lesson_files = LessonFiles(lesson)
-    lesson_root = lesson_files.lesson_root
+    lesson = Lesson(argv[1])
 
-    txt_path = lesson_root / "old.txt"
-
-    if not txt_path.exists():
-        raise Exception(f"File {txt_path} doesn't exist")
+    if not (txt_path := lesson.root / "old.txt").exists():
+        msg = f"File {txt_path} doesn't exist"
+        raise Exception(msg)
 
     logger.debug("Found old source")
 
     data = parse_old_format(txt_path)
-    tframes = Transitions._get_transition_frames(lesson_root / "tframes")
+    tframes = Transitions._get_transition_frames(lesson.root / "tframes")
 
     if tframes[0].timestamp > timedelta(hours=21).total_seconds():
         for tframe in tframes:
@@ -85,11 +83,11 @@ def main():
             )
         data[i]["tframe"] = tframe.path
 
-    slides = Slides(lesson_root, True)
+    slides = Slides(lesson.root, True)
     slides._load_slides(data)
     slides.save(Step.merge)
 
-    annotate = Annotate(slides, lesson_files.presentation)
+    annotate = Annotate(slides, lesson.presentation)
     annotate.enumerate_slides_from_tframes()
     annotate.to_pdf()
 

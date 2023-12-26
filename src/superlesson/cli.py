@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 import click
 
+from .collection import Lesson
 from .steps.step import Step
 from .storage import Slides
-from .storage.lesson import LessonFiles
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -18,7 +18,7 @@ logger = logging.getLogger("superlesson")
 
 @dataclass
 class Context:
-    lesson_files: LessonFiles
+    lesson: Lesson
     slides: Slides
 
 
@@ -39,10 +39,10 @@ class Context:
 @click.pass_context
 def cli(ctx, lesson, transcribe_with, annotate_with, verbose, debug):
     """Your CLI application for processing lessons."""
-    lesson_files = LessonFiles(lesson, transcribe_with, annotate_with)
+    lesson = Lesson(lesson, transcribe_with, annotate_with)
     ctx.obj = Context(
-        lesson_files,
-        Slides(lesson_files.lesson_root, verbose),
+        lesson,
+        Slides(lesson.root, verbose),
     )
 
     if debug:
@@ -72,7 +72,7 @@ def transcribe(ctx):
     """Transcribe a LESSON."""
     from .steps import Transcribe
 
-    Transcribe(ctx.obj.slides, ctx.obj.lesson_files.transcription_source).single_file()
+    Transcribe(ctx.obj.slides, ctx.obj.lesson.video).single_file()
 
 
 @cli.command()
@@ -86,24 +86,11 @@ def merge(ctx):
 
 @cli.command()
 @click.pass_context
-def enumerate(ctx):
-    """Enumerate slides."""
-    from .steps import Annotate
-
-    Annotate(
-        ctx.obj.slides, ctx.obj.lesson_files.presentation
-    ).enumerate_slides_from_tframes()
-
-
-@cli.command()
-@click.pass_context
 def replace(ctx):
     """Replace bogus words."""
     from .steps import Transcribe
 
-    Transcribe(
-        ctx.obj.slides, ctx.obj.lesson_files.transcription_source
-    ).replace_words()
+    Transcribe(ctx.obj.slides, ctx.obj.lesson.video).replace_words()
 
 
 @cli.command()
@@ -112,9 +99,18 @@ def improve(ctx):
     """Improve text."""
     from .steps import Transcribe
 
-    Transcribe(
-        ctx.obj.slides, ctx.obj.lesson_files.transcription_source
-    ).improve_punctuation()
+    Transcribe(ctx.obj.slides, ctx.obj.lesson.video).improve_punctuation()
+
+
+@cli.command()
+@click.pass_context
+def enumerate(ctx):
+    """Enumerate slides."""
+    from .steps import Annotate
+
+    Annotate(
+        ctx.obj.slides, ctx.obj.lesson.presentation
+    ).enumerate_slides_from_tframes()
 
 
 @cli.command()
@@ -123,7 +119,7 @@ def annotate(ctx):
     """Annotate to PDF."""
     from .steps import Annotate
 
-    annotate = Annotate(ctx.obj.slides, ctx.obj.lesson_files.presentation)
+    annotate = Annotate(ctx.obj.slides, ctx.obj.lesson.presentation)
     annotate.to_pdf()
 
 
@@ -138,12 +134,12 @@ def annotate(ctx):
 @click.pass_context
 def diff(ctx, previous, next):
     """Show differences in a LESSON from ."""
-    lesson_root = ctx.obj.lesson_files.lesson_root
-    prev_slides = Slides(lesson_root)
+    root = ctx.obj.lesson.root
+    prev_slides = Slides(root)
     prev_slides.load_step(Step[previous])
     prev_file = prev_slides.save_temp_txt()
 
-    next_slides = Slides(lesson_root)
+    next_slides = Slides(root)
     next_slides.load_step(Step[next])
     next_file = next_slides.save_temp_txt()
 
