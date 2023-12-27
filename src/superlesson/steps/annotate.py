@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum, unique
 from pathlib import Path
 
-from superlesson.storage import LessonFile, Slides
+from superlesson.storage import Slides
 from superlesson.storage.utils import mktemp
 
 from .step import Step, step
@@ -36,13 +36,12 @@ class Answer:
 
 
 class Annotate:
-    def __init__(self, slides: Slides, presentation: LessonFile):
+    def __init__(self, slides: Slides, presentation: Path):
         self._presentation = presentation
 
         from pypdf import PdfReader
 
-        self.presentation_len = len(PdfReader(self._presentation.full_path).pages)
-
+        self.presentation_len = len(PdfReader(presentation).pages)
         self.slides = slides
 
     def _get_slide_number_from_user(self, slide_idx: int, default: int) -> Answer:
@@ -171,7 +170,7 @@ class Annotate:
         #     current = next
         # pages.append(current)
 
-        pdf = PdfReader(self._presentation.full_path)
+        pdf = PdfReader(self._presentation)
 
         page_width = pdf.pages[0].mediabox.width
         page_height = pdf.pages[0].mediabox.height
@@ -242,7 +241,7 @@ class Annotate:
             logger.debug(f"Adding transcription to slide {i}")
             merger.append(transcription_pdf, pages=(i, i + 1))
 
-        output = self._presentation.path / "annotations.pdf"
+        output = self._presentation.parent / "annotations.pdf"
         merger.write(output)
         logger.info(f"Annotated PDF saved as {output}")
 

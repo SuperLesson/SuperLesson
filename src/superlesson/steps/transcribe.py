@@ -8,7 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
-from superlesson.storage import LessonFile, Slide, Slides
+from superlesson.storage import Slide, Slides
 from superlesson.storage.slide import TimeFrame
 from superlesson.storage.store import Store
 from superlesson.storage.utils import diff_words, extract_audio
@@ -34,12 +34,12 @@ class Prompt:
 class Transcribe:
     _bucket_name = "lesson-audios"
 
-    def __init__(self, slides: Slides, video: LessonFile):
+    def __init__(self, slides: Slides, video: Path):
         from dotenv import load_dotenv
 
         load_dotenv()
 
-        self._lesson_root = slides.lesson_root
+        self._replacements_path = slides.lesson_root / "replacements.txt"
         self._video = video
         self.slides = slides
 
@@ -47,7 +47,7 @@ class Transcribe:
     def single_file(self):
         bench_start = time.time()
 
-        s3_url = self._upload_file_to_s3(extract_audio(self._video.path))
+        s3_url = self._upload_file_to_s3(extract_audio(self._video))
 
         bench_duration = time.time() - bench_start
         logger.info(f"Took {bench_duration} to upload to S3")
@@ -121,16 +121,15 @@ class Transcribe:
 
     @step(Step.replace, Step.merge)
     def replace_words(self):
-        replacements_path = self._lesson_root / "replacements.txt"
-        if not replacements_path.exists():
+        if not self._replacements_path.exists():
             logger.warning(
-                f"{replacements_path} doesn't exist, so no replacements will be done"
+                f"{self._replacements_path} doesn't exist, so no replacements will be done"
             )
             return
 
         pattern = re.compile(r'\s*([^"]*[^"\s])')
 
-        lines = replacements_path.read_text().split("\n")
+        lines = self._replacements_path.read_text().split("\n")
         for line in lines:
             if line.strip() == "":
                 continue

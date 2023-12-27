@@ -5,7 +5,8 @@ from dataclasses import dataclass
 import click
 
 from .steps.step import Step
-from .storage import LessonFiles, Slides
+from .storage import Slides
+from .storage.lesson import LessonFiles
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d - %(name)s:%(levelname)s: %(message)s",
@@ -80,9 +81,7 @@ def merge(ctx):
     """Merge words."""
     from .steps import Transitions
 
-    Transitions(
-        ctx.obj.slides, ctx.obj.lesson_files.transcription_source
-    ).merge_segments()
+    Transitions(ctx.obj.slides).merge_segments()
 
 
 @cli.command()

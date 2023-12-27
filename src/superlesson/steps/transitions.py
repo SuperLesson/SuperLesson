@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from superlesson.storage import LessonFile, Slides
+from superlesson.storage import Slides
 from superlesson.storage.utils import seconds_to_timestamp
 
 from .step import Step, step
@@ -19,20 +19,17 @@ class TransitionFrame:
 
 
 class Transitions:
-    def __init__(self, slides: Slides, transcription_source: LessonFile):
-        self._transcription_source = transcription_source
+    def __init__(self, slides: Slides):
+        self._tframes_path = slides.lesson_root / "tframes"
         self.slides = slides
 
     @step(Step.merge, Step.transcribe)
     def merge_segments(self):
-        tframes_path = self._transcription_source.path / "tframes"
-        try:
-            tframes = self._get_transition_frames(tframes_path)
-        except FileNotFoundError as e:
-            msg = f"Couldn't find transition frames at {tframes_path}"
-            raise Exception(msg) from e
+        if not self._tframes_path.exists():
+            msg = f"Couldn't find transition frames at {self._tframes_path}"
+            raise FileNotFoundError(msg)
 
-        if tframes:
+        if tframes := self._get_transition_frames(self._tframes_path):
             timestamps = self._improve_transitions(
                 [frame.timestamp for frame in tframes]
             )

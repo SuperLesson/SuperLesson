@@ -18,18 +18,10 @@ class FileType(Enum):
 class LessonFile:
     """Class to represent a lesson file."""
 
-    name: str
     path: Path
-    file_type: FileType
 
-    def __init__(self, name: str, path: Path):
-        self.name = name
-        self.path = path
-        self.file_type = self._file_type(name)
-
-    @property
-    def full_path(self) -> Path:
-        return self.path / self.name
+    def __post_init__(self):
+        self.type = self._file_type(self.path.name)
 
     @staticmethod
     def _file_type(name: str) -> FileType:
@@ -76,19 +68,14 @@ class LessonFiles:
             if root != self.lesson_root:
                 msg = "Transcription source must be in lesson root"
                 raise ValueError(msg)
-            self._transcription_source = LessonFile(
-                transcription_source_path.name,
-                root,
-            )
+            self._transcription_source = LessonFile(transcription_source_path)
         self._presentation = None
         if presentation_path is not None:
             root = presentation_path.resolve().parent
             if root != self.lesson_root:
                 msg = "Presentation must be in lesson root"
                 raise ValueError(msg)
-            self._presentation = LessonFile(
-                presentation_path.name, presentation_path.resolve().parent
-            )
+            self._presentation = LessonFile(presentation_path)
 
     @staticmethod
     def find_lesson_root(lesson: str) -> Path:
@@ -120,7 +107,7 @@ class LessonFiles:
             if file.suffix == ".txt":
                 continue
             try:
-                self._files.append(LessonFile(file.name, self.lesson_root))
+                self._files.append(LessonFile(file))
                 logger.debug(f"Found file: {file}")
             except ValueError:
                 logger.debug(f"Skipping file: {file}")
@@ -130,7 +117,7 @@ class LessonFiles:
         return self._files
 
     @property
-    def transcription_source(self) -> LessonFile:
+    def transcription_source(self) -> Path:
         """The file to be used for transcription."""
         if self._transcription_source is None:
             file = self._find_first(FileType.video)
@@ -140,10 +127,10 @@ class LessonFiles:
             self._transcription_source = file
             logger.debug(f"Transcription source: {self._transcription_source}")
 
-        return self._transcription_source
+        return self._transcription_source.path
 
     @property
-    def presentation(self) -> LessonFile:
+    def presentation(self) -> Path:
         """The file to be used for annotation."""
         if self._presentation is None:
             file = self._find_first(FileType.slides)
@@ -153,10 +140,10 @@ class LessonFiles:
             self._presentation = file
             logger.debug(f"Presentation: {self._presentation}")
 
-        return self._presentation
+        return self._presentation.path
 
     def _find_first(self, type: FileType) -> LessonFile | None:
         try:
-            return next(file for file in self.files if file.file_type is type)
+            return next(file for file in self.files if file.type is type)
         except StopIteration:
             return None
