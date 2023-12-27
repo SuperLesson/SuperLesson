@@ -88,18 +88,18 @@ def merge(ctx):
 @click.pass_context
 def replace(ctx):
     """Replace bogus words."""
-    from .steps import Transcribe
+    from .steps import Replace
 
-    Transcribe(ctx.obj.slides, ctx.obj.lesson.video).replace_words()
+    Replace(ctx.obj.slides).bogus_words()
 
 
 @cli.command()
 @click.pass_context
 def improve(ctx):
     """Improve text."""
-    from .steps import Transcribe
+    from .steps import Improve
 
-    Transcribe(ctx.obj.slides, ctx.obj.lesson.video).improve_punctuation()
+    Improve(ctx.obj.slides).punctuation()
 
 
 @cli.command()
