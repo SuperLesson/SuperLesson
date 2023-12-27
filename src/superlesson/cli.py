@@ -79,9 +79,9 @@ def transcribe(ctx):
 @click.pass_context
 def merge(ctx):
     """Merge words."""
-    from .steps import Transitions
+    from .steps import Merge
 
-    Transitions(ctx.obj.slides).merge_segments()
+    Merge(ctx.obj.slides).segments()
 
 
 @cli.command()

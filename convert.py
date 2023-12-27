@@ -6,7 +6,7 @@ from sys import argv
 from typing import Any
 
 from superlesson.collection import Lesson
-from superlesson.steps import Annotate, Enumerate, Transitions
+from superlesson.steps import Annotate, Enumerate, Merge
 from superlesson.steps.step import Step
 from superlesson.storage import Slides
 from superlesson.storage.utils import seconds_to_timestamp
@@ -65,7 +65,7 @@ def main():
     logger.debug("Found old source")
 
     data = parse_old_format(txt_path)
-    tframes = Transitions._get_transition_frames(lesson.root / "tframes")
+    tframes = Merge._get_transition_frames(lesson.root / "tframes")
 
     if tframes[0].timestamp > timedelta(hours=21).total_seconds():
         for tframe in tframes:

@@ -18,7 +18,7 @@ class TransitionFrame:
     path: Path
 
 
-class Transitions:
+class Merge:
     def __init__(self, slides: Slides):
         self._tframes_path = slides.lesson_root / "tframes"
         self.slides = slides
