@@ -6,7 +6,7 @@ from sys import argv
 from typing import Any
 
 from superlesson.collection import Lesson
-from superlesson.steps import Annotate, Transitions
+from superlesson.steps import Annotate, Enumerate, Transitions
 from superlesson.steps.step import Step
 from superlesson.storage import Slides
 from superlesson.storage.utils import seconds_to_timestamp
@@ -87,9 +87,8 @@ def main():
     slides._load_slides(data)
     slides.save(Step.merge)
 
-    annotate = Annotate(slides, lesson.presentation)
-    annotate.enumerate_slides_from_tframes()
-    annotate.to_pdf()
+    Enumerate(slides, lesson.presentation).using_tframes()
+    Annotate(slides, lesson.presentation).to_pdf()
 
 
 if __name__ == "__main__":

@@ -106,11 +106,9 @@ def improve(ctx):
 @click.pass_context
 def enumerate(ctx):
     """Enumerate slides."""
-    from .steps import Annotate
+    from .steps import Enumerate
 
-    Annotate(
-        ctx.obj.slides, ctx.obj.lesson.presentation
-    ).enumerate_slides_from_tframes()
+    Enumerate(ctx.obj.slides, ctx.obj.lesson.presentation).using_tframes()
 
 
 @cli.command()
