@@ -8,7 +8,7 @@ from typing import Any
 from superlesson.steps.step import Step
 
 from .store import Store
-from .utils import format_transcription, seconds_to_timestamp
+from .utils import seconds_to_timestamp
 
 logger = logging.getLogger("superlesson")
 
@@ -49,7 +49,9 @@ class Slide:
             number = "hidden"
         else:
             number = self.number + 1
-        return f"====== SLIDE {number} ({self.timeframe}) ======\n\n{format_transcription(self.transcription)}"
+        return (
+            f"====== SLIDE {number} ({self.timeframe}) ======\n\n{self.transcription}"
+        )
 
 
 @dataclass

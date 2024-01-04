@@ -6,7 +6,7 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import Any
 
-from .utils import format_transcription, mktemp
+from .utils import mktemp
 
 logger = logging.getLogger("superlesson")
 
@@ -53,7 +53,7 @@ class Store:
                     "start": timestamp_to_seconds(raw_slides[i + 1]),
                     "end": timestamp_to_seconds(raw_slides[i + 2]),
                 },
-                "transcription": format_transcription(raw_slides[i + 3]),
+                "transcription": raw_slides[i + 3],
             }
             for i in range(1, len(raw_slides), 4)
         ]

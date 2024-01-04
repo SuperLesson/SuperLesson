@@ -1,33 +1,10 @@
 import logging
-import re
 import subprocess
 import tempfile
 from datetime import timedelta
 from pathlib import Path
-from textwrap import fill
 
 logger = logging.getLogger("superlesson")
-
-
-def format_transcription(text: str) -> str:
-    lines = text.splitlines()
-    paragraphs = []
-    current_para = []
-    for line in lines:
-        if line == "":
-            if current_para:
-                paragraphs.append(current_para)
-                current_para = []
-        else:
-            line = re.sub(r"\s+", " ", line)
-            current_para.append(line)
-
-    if current_para:
-        paragraphs.append(current_para)
-
-    return "\n\n".join(
-        [fill(" ".join(para), width=120, tabsize=4) for para in paragraphs]
-    )
 
 
 def seconds_to_timestamp(s: float) -> str:
